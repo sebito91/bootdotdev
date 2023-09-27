@@ -1,4 +1,5 @@
 const {argv} = require('node:process');
+const {crawlPage} = require('./crawl.js');
 
 function main() {
   if (argv.length != 3) {
@@ -8,6 +9,7 @@ function main() {
   }
 
   console.log(`Calling the crawler for ${argv[2]}...`);
+  crawlPage(argv[2]);
 }
 
 main();
