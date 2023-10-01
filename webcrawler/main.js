@@ -1,5 +1,6 @@
 const {argv} = require('node:process');
 const {crawlPage} = require('./crawl.js');
+const {printReport, tester} = require('./report.js');
 
 async function startCrawl(baseURL, currentURL) {
   const pages = await crawlPage(baseURL, currentURL, {});
@@ -19,11 +20,7 @@ async function main() {
   console.log(`Calling the crawler for ${baseURL}...`);
 
   const pages = await crawlPage(baseURL, currentURL, {});
-  const pageset = Object.keys(pages);
-
-  pageset.forEach((page) => {
-    console.log(`Found ${pages[page]} visits to ${page}`);
-  });
+  printReport(pages);
 }
 
 main();
