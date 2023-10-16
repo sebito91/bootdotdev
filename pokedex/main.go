@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"os/signal"
 	"strings"
 )
 
@@ -30,7 +31,13 @@ func generateFunctionMap() map[string]cliCommand {
 }
 
 func commandHelp() string {
-	return "Usage:\nHelp goes here...\n\n"
+	output := "Usage:\n\n"
+
+	for text, cmd := range generateFunctionMap() {
+		output += fmt.Sprintf("\t%s: %s\n", text, cmd.desc)
+	}
+
+	return output
 }
 
 func commandExit() string {
@@ -40,8 +47,12 @@ func commandExit() string {
 func main() {
 	fmt.Println("Welcome to the Pokedex, your one-stop shop for all things Pokemon!")
 
-	stopChan := make(chan bool)
 	cmdChan := make(chan cliCommand)
+
+	// channel for signal processing
+	cancelChan := make(chan os.Signal, 1)
+	signal.Notify(cancelChan, os.Interrupt)
+
 	scanner := bufio.NewScanner(os.Stdin)
 
 	cmds := generateFunctionMap()
@@ -50,9 +61,13 @@ func main() {
 		for {
 			fmt.Printf("pokedex > ")
 
-			_ = scanner.Scan()
-			text := strings.TrimSpace(scanner.Text())
+			if ok := scanner.Scan(); !ok && scanner.Err() == nil {
+				fmt.Printf("received close signal\n")
+				cancelChan <- os.Interrupt
+				return
+			}
 
+			text := strings.TrimSpace(scanner.Text())
 			if err := scanner.Err(); err != nil {
 				fmt.Fprintln(os.Stderr, "reading standard input:", err)
 				continue
@@ -65,7 +80,8 @@ func main() {
 			}
 
 			if cmd.name == "exit" {
-				stopChan <- true
+				cancelChan <- os.Interrupt
+				return
 			}
 
 			cmdChan <- cmd
@@ -78,9 +94,9 @@ func main() {
 			fmt.Printf("SEBTEST -- we received a command (%s): %s\n", cmd.name, cmd.desc)
 			fmt.Println(cmd.callback())
 			continue
-		case <-stopChan:
+		case <-cancelChan:
 			fmt.Println(cmds["exit"].callback())
-			close(stopChan)
+			close(cancelChan)
 			close(cmdChan)
 			fmt.Printf("done closing channels...\n")
 			return
