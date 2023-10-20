@@ -1,12 +1,38 @@
 package commands
 
-import "fmt"
+import (
+	"fmt"
+	"net/url"
+)
 
 // CliCommand is the default struct for each command within the pokedex
 type CliCommand struct {
 	Name     string
 	Desc     string
 	Callback func() string
+}
+
+// Config is a helper-struct that provides additional context to the CliCommand interaction
+type Config struct {
+	Next     *url.URL
+	Previous *url.URL
+}
+
+func GetConfig(startURL string) (*Config, error) {
+	if startURL == "" {
+		fmt.Println("WARN  -- no `startURL` given, using default...")
+		startURL = "https://pokeapi.co/api/v2/location-area/"
+	}
+
+	u, err := url.Parse(startURL)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Config{
+		Next:     u,
+		Previous: u,
+	}, nil
 }
 
 func GenerateFunctionMap() map[string]CliCommand {
