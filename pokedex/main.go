@@ -6,48 +6,14 @@ import (
 	"os"
 	"os/signal"
 	"strings"
+
+	"github.com/sebito91/bootdotdev/pokedex/commands"
 )
-
-// cliCommand is the default struct for each command within the pokedex
-type cliCommand struct {
-	name     string
-	desc     string
-	callback func() string
-}
-
-func generateFunctionMap() map[string]cliCommand {
-	return map[string]cliCommand{
-		"help": {
-			name:     "help",
-			desc:     "Print the usage of the pokedex",
-			callback: commandHelp,
-		},
-		"exit": {
-			name:     "exit",
-			desc:     "Exit the application cleanly",
-			callback: commandExit,
-		},
-	}
-}
-
-func commandHelp() string {
-	output := "Usage:\n\n"
-
-	for text, cmd := range generateFunctionMap() {
-		output += fmt.Sprintf("\t%s: %s\n", text, cmd.desc)
-	}
-
-	return output
-}
-
-func commandExit() string {
-	return "exiting..."
-}
 
 func main() {
 	fmt.Println("Welcome to the Pokedex, your one-stop shop for all things Pokemon!")
 
-	cmdChan := make(chan cliCommand)
+	cmdChan := make(chan commands.CliCommand)
 
 	// channel for signal processing
 	cancelChan := make(chan os.Signal, 1)
@@ -55,7 +21,7 @@ func main() {
 
 	scanner := bufio.NewScanner(os.Stdin)
 
-	cmds := generateFunctionMap()
+	cmds := commands.GenerateFunctionMap()
 
 	go func() {
 		for {
@@ -79,7 +45,7 @@ func main() {
 				continue
 			}
 
-			if cmd.name == "exit" {
+			if cmd.Name == "exit" {
 				cancelChan <- os.Interrupt
 				return
 			}
@@ -91,11 +57,11 @@ func main() {
 	for {
 		select {
 		case cmd := <-cmdChan:
-			fmt.Printf("SEBTEST -- we received a command (%s): %s\n", cmd.name, cmd.desc)
-			fmt.Println(cmd.callback())
+			fmt.Printf("SEBTEST -- we received a command (%s): %s\n", cmd.Name, cmd.Desc)
+			fmt.Println(cmd.Callback())
 			continue
 		case <-cancelChan:
-			fmt.Println(cmds["exit"].callback())
+			fmt.Println(cmds["exit"].Callback())
 			close(cancelChan)
 			close(cmdChan)
 			fmt.Printf("done closing channels...\n")
