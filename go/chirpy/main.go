@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"time"
 )
 
 func middlewareCors(next http.Handler) http.Handler {
@@ -23,14 +24,16 @@ func main() {
 
 	// kick off the new multiplexer
 	mux := http.NewServeMux()
+	mux.Handle("/", http.FileServer(http.Dir(".")))
 
 	// wrap the mux in a custom middleware for CORS headers
 	corsMux := middlewareCors(mux)
 
 	// create the server struct
 	server := &http.Server{
-		Addr:    "localhost:8080",
-		Handler: corsMux,
+		Addr:              "localhost:8080",
+		Handler:           corsMux,
+		ReadHeaderTimeout: time.Second,
 	}
 
 	if err := server.ListenAndServe(); err != nil {
