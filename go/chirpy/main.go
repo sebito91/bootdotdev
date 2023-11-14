@@ -22,13 +22,8 @@ func main() {
 	r.Handle(appPrefix, fsHandler)
 	r.Handle(appPrefix+"/*", fsHandler)
 
-	// /api router
-	rAPI := chi.NewRouter()
-	rAPI.Get("/healthz", readinessEndpoint)
-	rAPI.Get("/metrics", apiCfg.metricsEndpoint)
-	rAPI.Get("/reset", apiCfg.resetEndpoint)
-
-	r.Mount("/api", rAPI)
+	r.Mount("/api", apiCfg.GetAPI())
+	r.Mount("/admin", apiCfg.GetAdminAPI())
 
 	// wrap the mux in a custom middleware for CORS headers
 	corsMux := middlewareCors(r)
