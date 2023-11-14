@@ -6,37 +6,20 @@ import (
 	"time"
 )
 
-func middlewareCors(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS, PUT, DELETE")
-		w.Header().Set("Access-Control-Allow-Headers", "*")
-		if r.Method == "OPTIONS" {
-			w.WriteHeader(http.StatusOK)
-			return
-		}
-		next.ServeHTTP(w, r)
-	})
-}
-
-func readinessEndpoint(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusOK)
-
-	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	if _, err := w.Write([]byte("OK")); err != nil {
-		panic(err)
-	}
-}
-
 func main() {
 	fmt.Println("vim-go")
 
 	appPrefix := "/app"
+	apiCfg := &apiConfig{}
+
+	mainHandler := http.StripPrefix(appPrefix, http.FileServer(http.Dir(".")))
 
 	// kick off the new multiplexer
 	mux := http.NewServeMux()
-	mux.Handle(appPrefix+"/", http.StripPrefix(appPrefix, http.FileServer(http.Dir("."))))
+	mux.Handle(appPrefix+"/", apiCfg.middlewareMetricsInc(mainHandler))
 	mux.HandleFunc("/healthz", readinessEndpoint)
+	mux.HandleFunc("/metrics", apiCfg.metricsEndpoint)
+	mux.HandleFunc("/reset", apiCfg.resetEndpoint)
 
 	// wrap the mux in a custom middleware for CORS headers
 	corsMux := middlewareCors(mux)
