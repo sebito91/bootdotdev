@@ -108,22 +108,12 @@ func (c *apiConfig) validateChirp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	dat, datErr := json.Marshal(struct {
+	payload := struct {
 		Valid bool `json:"valid"`
 	}{
 		Valid: true,
-	})
-	if datErr != nil {
-		log.Printf("Error marshaling JSON: %s", datErr)
-		return
 	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	if _, wErr := w.Write(dat); wErr != nil {
-		log.Printf("Error writing JSON to page: %s", wErr)
-		return
-	}
+	writeSuccessToPage(w, http.StatusOK, payload)
 }
 
 // readinessEndpoint yields the status and information for the /healthz endpoint
@@ -141,13 +131,29 @@ func (e *errorBody) writeErrorToPage(w http.ResponseWriter) {
 	w.WriteHeader(e.errorCode)
 	dat, datErr := json.Marshal(e)
 	if datErr != nil {
-		log.Printf("Error marshaling JSON: %s", datErr)
+		log.Printf("Error marshaling error JSON: %s", datErr)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	if _, wErr := w.Write(dat); wErr != nil {
-		log.Printf("Error writing JSON to page: %s", wErr)
+		log.Printf("Error writing error JSON to page: %s", wErr)
+		return
+	}
+}
+
+// writeSuccessToPage is a helper function that reuses a JSON-posting for success messages
+func writeSuccessToPage(w http.ResponseWriter, statusCode int, payload interface{}) {
+	dat, datErr := json.Marshal(payload)
+	if datErr != nil {
+		log.Printf("Error marshaling success JSON: %s", datErr)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(statusCode)
+	if _, wErr := w.Write(dat); wErr != nil {
+		log.Printf("Error writing success JSON to page: %s", wErr)
 		return
 	}
 }
