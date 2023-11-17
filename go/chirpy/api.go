@@ -27,8 +27,13 @@ type errorBody struct {
 }
 
 // NewAPIConfig returns a new instance of the APIConfig
-func NewAPIConfig() *APIConfig {
-	return &APIConfig{db: database.NewDB()}
+func NewAPIConfig() (*APIConfig, error) {
+	db, err := database.NewDB()
+	if err != nil {
+		return nil, err
+	}
+
+	return &APIConfig{db: db}, nil
 }
 
 // GetAPI returns the router for the /api endpoint
@@ -37,7 +42,8 @@ func (c *APIConfig) GetAPI() chi.Router {
 
 	r.Get("/healthz", readinessEndpoint)
 
-	r.Post("/validate_chirp", c.chirps)
+	r.Get("/chirps", c.getChirps)
+	r.Post("/chirps", c.writeChirp)
 
 	return r
 }
@@ -67,7 +73,12 @@ func (c *APIConfig) ResetFileserverHits() {
 	c.mux.Unlock()
 }
 
-func (c *APIConfig) chirps(w http.ResponseWriter, r *http.Request) {
+// getChirps will fetch the chirps from the DB and write to the page
+func (c *APIConfig) getChirps(w http.ResponseWriter, r *http.Request) {
+}
+
+// writeChirps will validate the chirp first, and if successful commit to the db
+func (c *APIConfig) writeChirp(w http.ResponseWriter, r *http.Request) {
 	type bodyCheck struct {
 		Body string `json:"body"`
 	}
@@ -97,12 +108,18 @@ func (c *APIConfig) chirps(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	payload := struct {
-		Body string `json:"cleaned_body"`
-	}{
-		Body: cleanedBody(bodyChk.Body),
+	chirp, err := c.db.CreateChirp(cleanedBody(bodyChk.Body))
+	if err != nil {
+		errBody := errorBody{
+			Error:     err,
+			errorCode: http.StatusBadRequest,
+		}
+
+		errBody.writeErrorToPage(w)
+		return
 	}
-	writeSuccessToPage(w, http.StatusOK, payload)
+
+	writeSuccessToPage(w, http.StatusOK, chirp)
 }
 
 func cleanedBody(body string) string {

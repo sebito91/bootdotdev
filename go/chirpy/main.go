@@ -12,8 +12,15 @@ func main() {
 	fmt.Println("vim-go")
 
 	appPrefix := "/app"
-	apiCfg := NewAPIConfig()
-	adminCfg := NewAdminConfig(apiCfg)
+	apiCfg, apiErr := NewAPIConfig()
+	if apiErr != nil {
+		panic(apiErr)
+	}
+
+	adminCfg, adminErr := NewAdminConfig(apiCfg)
+	if adminErr != nil {
+		panic(adminErr)
+	}
 
 	mainHandler := http.StripPrefix(appPrefix, http.FileServer(http.Dir(".")))
 	fsHandler := apiCfg.middlewareMetricsInc(mainHandler)
