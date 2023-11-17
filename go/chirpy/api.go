@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"regexp"
+	"sync"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -14,6 +15,7 @@ import (
 // NOTE: this value is in-memory only and will persist for the duration of the server
 type apiConfig struct {
 	fileserverHits int
+	mux            sync.RWMutex
 }
 
 // errorBody is a struct used for returning a JSON-based error code/string
@@ -28,17 +30,7 @@ func (c *apiConfig) GetAPI() chi.Router {
 
 	r.Get("/healthz", readinessEndpoint)
 
-	r.Post("/validate_chirp", c.validateChirp)
-
-	return r
-}
-
-// GetAdminAPI returns the router for the /admin endpoint
-func (c *apiConfig) GetAdminAPI() chi.Router {
-	r := chi.NewRouter()
-
-	r.Get("/metrics", c.metricsEndpoint)
-	r.Get("/reset", c.resetEndpoint)
+	r.Post("/validate_chirp", c.chirps)
 
 	return r
 }
@@ -47,39 +39,28 @@ func (c *apiConfig) GetAdminAPI() chi.Router {
 // of the number of site visits during server operation
 func (c *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.mux.Lock()
 		c.fileserverHits++
+		c.mux.Unlock()
 		next.ServeHTTP(w, r)
 	})
 }
 
-// metricsEndpoint will use a write-enabled middleware to display the number
-// of site visits since the start of the server
-func (c *apiConfig) metricsEndpoint(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusOK)
-
-	w.Header().Set("Content-Type", "text/html")
-	content := `
-<html>
-	<body>
-		<h1>Welcome, Chirpy Admin</h1>
-		<p>Chirpy has been visited %d times!</p>
-	</body>
-</html>
-`
-	if _, err := fmt.Fprintf(w, content, c.fileserverHits); err != nil {
-		panic(err)
-	}
+// GetFileserverHits returns the current number of site visits since the start of the server
+func (c *apiConfig) GetFileserverHits() int {
+	c.mux.RLock()
+	defer c.mux.RUnlock()
+	return c.fileserverHits
 }
 
-// resetEndpoint will reset the number of site visits to 0 during a running server
-func (c *apiConfig) resetEndpoint(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusOK)
-
-	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+// ResetFileserverHits will reset the fileserverHits counter as if the server restarted
+func (c *apiConfig) ResetFileserverHits() {
+	c.mux.Lock()
 	c.fileserverHits = 0
+	c.mux.Unlock()
 }
 
-func (c *apiConfig) validateChirp(w http.ResponseWriter, r *http.Request) {
+func (c *apiConfig) chirps(w http.ResponseWriter, r *http.Request) {
 	type bodyCheck struct {
 		Body string `json:"body"`
 	}

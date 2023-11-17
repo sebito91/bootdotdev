@@ -13,6 +13,7 @@ func main() {
 
 	appPrefix := "/app"
 	apiCfg := &apiConfig{}
+	adminCfg := &adminConfig{apiCfg}
 
 	mainHandler := http.StripPrefix(appPrefix, http.FileServer(http.Dir(".")))
 	fsHandler := apiCfg.middlewareMetricsInc(mainHandler)
@@ -22,8 +23,8 @@ func main() {
 	r.Handle(appPrefix, fsHandler)
 	r.Handle(appPrefix+"/*", fsHandler)
 
-	r.Mount("/api", apiCfg.GetAPI())
-	r.Mount("/admin", apiCfg.GetAdminAPI())
+	r.Mount("/api", apiCfg.middlewareMetricsInc(apiCfg.GetAPI()))
+	r.Mount("/admin", adminCfg.GetAdminAPI())
 
 	// wrap the mux in a custom middleware for CORS headers
 	corsMux := middlewareCors(r)
