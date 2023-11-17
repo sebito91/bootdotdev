@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"regexp"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -109,11 +110,22 @@ func (c *apiConfig) validateChirp(w http.ResponseWriter, r *http.Request) {
 	}
 
 	payload := struct {
-		Valid bool `json:"valid"`
+		Body string `json:"cleaned_body"`
 	}{
-		Valid: true,
+		Body: cleanedBody(bodyChk.Body),
 	}
 	writeSuccessToPage(w, http.StatusOK, payload)
+}
+
+func cleanedBody(body string) string {
+	badWords := []string{"kerfuffle", "sharbert", "fornax"}
+
+	for _, word := range badWords {
+		re := regexp.MustCompile(fmt.Sprintf("(?i)%s", word))
+		body = re.ReplaceAllString(body, "****")
+	}
+
+	return body
 }
 
 // readinessEndpoint yields the status and information for the /healthz endpoint
