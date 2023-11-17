@@ -9,12 +9,14 @@ import (
 	"sync"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/sebito91/bootdotdev/go/chirpy/database"
 )
 
-// apiConfig is a local struct to keep track of site visits
+// APIConfig is a local struct to keep track of site visits
 // NOTE: this value is in-memory only and will persist for the duration of the server
-type apiConfig struct {
+type APIConfig struct {
 	fileserverHits int
+	db             *database.DB
 	mux            sync.RWMutex
 }
 
@@ -24,8 +26,13 @@ type errorBody struct {
 	errorCode int
 }
 
+// NewAPIConfig returns a new instance of the APIConfig
+func NewAPIConfig() *APIConfig {
+	return &APIConfig{db: database.NewDB()}
+}
+
 // GetAPI returns the router for the /api endpoint
-func (c *apiConfig) GetAPI() chi.Router {
+func (c *APIConfig) GetAPI() chi.Router {
 	r := chi.NewRouter()
 
 	r.Get("/healthz", readinessEndpoint)
@@ -37,7 +44,7 @@ func (c *apiConfig) GetAPI() chi.Router {
 
 // middlewareMetricsInc will use a middleware to increment an in-memory counter
 // of the number of site visits during server operation
-func (c *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
+func (c *APIConfig) middlewareMetricsInc(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		c.mux.Lock()
 		c.fileserverHits++
@@ -47,20 +54,20 @@ func (c *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
 }
 
 // GetFileserverHits returns the current number of site visits since the start of the server
-func (c *apiConfig) GetFileserverHits() int {
+func (c *APIConfig) GetFileserverHits() int {
 	c.mux.RLock()
 	defer c.mux.RUnlock()
 	return c.fileserverHits
 }
 
 // ResetFileserverHits will reset the fileserverHits counter as if the server restarted
-func (c *apiConfig) ResetFileserverHits() {
+func (c *APIConfig) ResetFileserverHits() {
 	c.mux.Lock()
 	c.fileserverHits = 0
 	c.mux.Unlock()
 }
 
-func (c *apiConfig) chirps(w http.ResponseWriter, r *http.Request) {
+func (c *APIConfig) chirps(w http.ResponseWriter, r *http.Request) {
 	type bodyCheck struct {
 		Body string `json:"body"`
 	}
