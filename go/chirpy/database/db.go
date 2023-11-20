@@ -42,7 +42,6 @@ func NewDB(path string) (*DB, error) {
 
 // CreateChirp creates a new chirp and saves it to disk
 func (db *DB) CreateChirp(body string) (Chirp, error) {
-	fmt.Printf("inside CreateChirp, going to post: %s...\n", body)
 	var chirp Chirp
 
 	nextChirpID, err := db.getNextChirpID()
@@ -68,17 +67,12 @@ func (db *DB) CreateChirp(body string) (Chirp, error) {
 
 // getNextChirpID is a helper function to determine the next chirp's ID from the database
 func (db *DB) getNextChirpID() (int, error) {
-	fmt.Println("inside getNextChirpID...")
 	chirps, err := db.GetChirps()
 	if err != nil {
-		fmt.Println("we had an error in getNextChirpID")
 		return -1, err
 	}
 
-	fmt.Printf("got chirps: %+v\n", chirps)
-
 	if len(chirps) == 0 {
-		fmt.Println("this is our first chirp!")
 		return 1, nil
 	}
 
@@ -92,20 +86,17 @@ func (db *DB) getNextChirpID() (int, error) {
 		return ids[a] > ids[b]
 	})
 
-	fmt.Printf("we're sending back chirpID %d\n", ids[0]+1)
-
 	return ids[0] + 1, nil
 }
 
 // GetChirps returns all chirps in the database
 func (db *DB) GetChirps() ([]Chirp, error) {
-	fmt.Println("inside GetChirps...")
 	dbStructure, err := db.loadDB()
 	if err != nil {
 		return nil, err
 	}
 
-	chirps := make([]Chirp, len(dbStructure.Chirps))
+	chirps := make([]Chirp, 0, len(dbStructure.Chirps))
 	for _, chirp := range dbStructure.Chirps {
 		chirps = append(chirps, chirp)
 	}
@@ -115,9 +106,7 @@ func (db *DB) GetChirps() ([]Chirp, error) {
 
 // ensureDB creates a new database file if it doesn't exist
 func (db *DB) ensureDB() error {
-	fmt.Println("inside ensureDB...")
 	db.mux.Lock()
-	defer fmt.Println("leaving ensureDB...")
 	defer db.mux.Unlock()
 
 	// If the file doesn't exist, create it, or append to the file
@@ -135,7 +124,6 @@ func (db *DB) ensureDB() error {
 
 // loadDB reads the database file into memory
 func (db *DB) loadDB() (DBStructure, error) {
-	fmt.Println("inside loadDB...")
 	var dbStructure DBStructure
 
 	if err := db.ensureDB(); err != nil {
@@ -156,13 +144,11 @@ func (db *DB) loadDB() (DBStructure, error) {
 	}
 
 	err = json.Unmarshal(data, &dbStructure)
-	fmt.Printf("what is the error in loadDB? %s\n", err)
 	return dbStructure, err
 }
 
 // writeDB writes the database file to disk
 func (db *DB) writeDB(dbStructure DBStructure) error {
-	fmt.Println("inside writeDB...")
 	db.mux.Lock()
 	defer db.mux.Unlock()
 

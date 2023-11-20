@@ -75,6 +75,18 @@ func (c *APIConfig) ResetFileserverHits() {
 
 // getChirps will fetch the chirps from the DB and write to the page
 func (c *APIConfig) getChirps(w http.ResponseWriter, r *http.Request) {
+	chirps, err := c.db.GetChirps()
+	if err != nil {
+		errBody := errorBody{
+			Error:     fmt.Sprintf("%s", err),
+			errorCode: http.StatusInternalServerError,
+		}
+
+		errBody.writeErrorToPage(w)
+		return
+	}
+
+	writeSuccessToPage(w, http.StatusOK, chirps)
 }
 
 // writeChirps will validate the chirp first, and if successful commit to the db
@@ -108,7 +120,6 @@ func (c *APIConfig) writeChirp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Printf("posting cleaned up: %s\n", cleanedBody(bodyChk.Body))
 	chirp, err := c.db.CreateChirp(cleanedBody(bodyChk.Body))
 	if err != nil {
 		errBody := errorBody{
@@ -120,8 +131,7 @@ func (c *APIConfig) writeChirp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Printf("done posting cleaned up: %s\n", cleanedBody(bodyChk.Body))
-	writeSuccessToPage(w, http.StatusOK, chirp)
+	writeSuccessToPage(w, http.StatusCreated, chirp)
 }
 
 func cleanedBody(body string) string {
