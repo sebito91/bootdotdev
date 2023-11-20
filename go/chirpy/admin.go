@@ -15,7 +15,7 @@ type AdminConfig struct {
 // NewAdminConfig returns an instance of the AdminConfig with proper reference to the APIConfig
 func NewAdminConfig(c *APIConfig) (*AdminConfig, error) {
 	if c == nil {
-		panic("Please make sure to initialize the API Config before the Admin Config")
+		return nil, fmt.Errorf("please make sure to initialize the API Config before the Admin Config")
 	}
 
 	return &AdminConfig{c}, nil

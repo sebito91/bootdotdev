@@ -28,7 +28,7 @@ type errorBody struct {
 
 // NewAPIConfig returns a new instance of the APIConfig
 func NewAPIConfig() (*APIConfig, error) {
-	db, err := database.NewDB()
+	db, err := database.NewDB("")
 	if err != nil {
 		return nil, err
 	}
@@ -108,10 +108,11 @@ func (c *APIConfig) writeChirp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	fmt.Printf("posting cleaned up: %s\n", cleanedBody(bodyChk.Body))
 	chirp, err := c.db.CreateChirp(cleanedBody(bodyChk.Body))
 	if err != nil {
 		errBody := errorBody{
-			Error:     err,
+			Error:     fmt.Sprintf("%s", err),
 			errorCode: http.StatusBadRequest,
 		}
 
@@ -119,6 +120,7 @@ func (c *APIConfig) writeChirp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	fmt.Printf("done posting cleaned up: %s\n", cleanedBody(bodyChk.Body))
 	writeSuccessToPage(w, http.StatusOK, chirp)
 }
 
