@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"regexp"
+	"strconv"
 	"sync"
 
 	"github.com/go-chi/chi/v5"
@@ -42,8 +43,14 @@ func (c *APIConfig) GetAPI() chi.Router {
 
 	r.Get("/healthz", readinessEndpoint)
 
-	r.Get("/chirps", c.getChirps)
-	r.Post("/chirps", c.writeChirp)
+	r.Route("/chirps", func(r chi.Router) {
+		r.Get("/", c.getChirps)
+		r.Post("/", c.writeChirp)
+
+		r.Route("/{chirpID}", func(r chi.Router) {
+			r.Get("/", c.getChirpID)
+		})
+	})
 
 	return r
 }
@@ -87,6 +94,55 @@ func (c *APIConfig) getChirps(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeSuccessToPage(w, http.StatusOK, chirps)
+}
+
+// getChirps will fetch the chirps from the DB and write to the page
+func (c *APIConfig) getChirpID(w http.ResponseWriter, r *http.Request) {
+	chirps, err := c.db.GetChirps()
+	if err != nil {
+		errBody := errorBody{
+			Error:     fmt.Sprintf("%s", err),
+			errorCode: http.StatusInternalServerError,
+		}
+
+		errBody.writeErrorToPage(w)
+		return
+	}
+
+	chirpID, err := strconv.Atoi(chi.URLParam(r, "chirpID"))
+	if err != nil {
+		errBody := errorBody{
+			Error:     fmt.Sprintf("%s", err),
+			errorCode: http.StatusInternalServerError,
+		}
+
+		errBody.writeErrorToPage(w)
+		return
+	}
+
+	if chirpID <= 0 {
+		errBody := errorBody{
+			Error:     fmt.Sprintf("expected valid chirpID (>0), got %d", chirpID),
+			errorCode: http.StatusBadRequest,
+		}
+
+		errBody.writeErrorToPage(w)
+		return
+	}
+
+	for _, chirp := range chirps {
+		if chirp.ID == chirpID {
+			writeSuccessToPage(w, http.StatusOK, chirp)
+			return
+		}
+	}
+
+	errBody := errorBody{
+		Error:     fmt.Sprintf("could not find chirpID %d", chirpID),
+		errorCode: http.StatusNotFound,
+	}
+
+	errBody.writeErrorToPage(w)
 }
 
 // writeChirps will validate the chirp first, and if successful commit to the db
