@@ -9,7 +9,7 @@ import (
 )
 
 func main() {
-	fmt.Println("vim-go")
+	fmt.Println("Welcome to Chirpy!")
 
 	appPrefix := "/app"
 	apiCfg, apiErr := NewAPIConfig()
