@@ -20,9 +20,16 @@ type Chirp struct {
 	Body string `json:"body"`
 }
 
+// User is the default struct to represent an individual user in the database
+type User struct {
+	ID    int    `json:"id"`
+	Email string `json:"email"`
+}
+
 // DBStructure is the interface to render the database
 type DBStructure struct {
 	Chirps map[int]Chirp `json:"chirps"`
+	Users  map[int]User  `json:"users"`
 }
 
 // NewDB creates a new database connection
@@ -38,6 +45,31 @@ func NewDB(path string) (*DB, error) {
 	}
 
 	return db, nil
+}
+
+// CreateUser creates a new user and saves it to disk
+func (db *DB) CreateUser(email string) (User, error) {
+	var user User
+
+	nextUserID, err := db.getNextUserID()
+	if err != nil {
+		return user, err
+	}
+
+	user.ID = nextUserID
+	user.Email = email
+
+	dbStructure, err := db.loadDB()
+	if err != nil {
+		return user, err
+	}
+
+	if _, ok := dbStructure.Users[user.ID]; ok {
+		return user, fmt.Errorf("expected unique userID but found duplicate at %d", user.ID)
+	}
+
+	dbStructure.Users[user.ID] = user
+	return user, db.writeDB(dbStructure)
 }
 
 // CreateChirp creates a new chirp and saves it to disk
@@ -65,6 +97,30 @@ func (db *DB) CreateChirp(body string) (Chirp, error) {
 	return chirp, db.writeDB(dbStructure)
 }
 
+// getNextUserID is a helper function to determine the next user's ID from the database
+func (db *DB) getNextUserID() (int, error) {
+	users, err := db.GetUsers()
+	if err != nil {
+		return -1, err
+	}
+
+	if len(users) == 0 {
+		return 1, nil
+	}
+
+	ids := make([]int, len(users))
+	for _, user := range users {
+		ids = append(ids, user.ID)
+	}
+
+	// sort the IDs in descending order
+	sort.Slice(ids, func(a, b int) bool {
+		return ids[a] > ids[b]
+	})
+
+	return ids[0] + 1, nil
+}
+
 // getNextChirpID is a helper function to determine the next chirp's ID from the database
 func (db *DB) getNextChirpID() (int, error) {
 	chirps, err := db.GetChirps()
@@ -87,6 +143,21 @@ func (db *DB) getNextChirpID() (int, error) {
 	})
 
 	return ids[0] + 1, nil
+}
+
+// GetUsers returns all users in the database
+func (db *DB) GetUsers() ([]User, error) {
+	dbStructure, err := db.loadDB()
+	if err != nil {
+		return nil, err
+	}
+
+	users := make([]User, 0, len(dbStructure.Users))
+	for _, user := range dbStructure.Users {
+		users = append(users, user)
+	}
+
+	return users, nil
 }
 
 // GetChirps returns all chirps in the database
@@ -140,6 +211,8 @@ func (db *DB) loadDB() (DBStructure, error) {
 
 	if len(data) == 0 {
 		dbStructure.Chirps = make(map[int]Chirp)
+		dbStructure.Users = make(map[int]User)
+
 		return dbStructure, nil
 	}
 

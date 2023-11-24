@@ -52,6 +52,15 @@ func (c *APIConfig) GetAPI() chi.Router {
 		})
 	})
 
+	r.Route("/users", func(r chi.Router) {
+		r.Get("/", c.getUsers)
+		r.Post("/", c.writeUser)
+
+		r.Route("/{userID}", func(r chi.Router) {
+			r.Get("/", c.getUserID)
+		})
+	})
+
 	return r
 }
 
@@ -80,6 +89,108 @@ func (c *APIConfig) ResetFileserverHits() {
 	c.mux.Unlock()
 }
 
+// getUsers will fetch all of the users stored within the database
+func (c *APIConfig) getUsers(w http.ResponseWriter, r *http.Request) {
+	users, err := c.db.GetUsers()
+
+	if err != nil {
+		errBody := errorBody{
+			Error:     fmt.Sprintf("%s", err),
+			errorCode: http.StatusInternalServerError,
+		}
+
+		errBody.writeErrorToPage(w)
+		return
+	}
+
+	writeSuccessToPage(w, http.StatusOK, users)
+}
+
+// getUserID will fetch the specific user with the provided userID from the database
+func (c *APIConfig) getUserID(w http.ResponseWriter, r *http.Request) {
+	users, err := c.db.GetUsers()
+
+	if err != nil {
+		errBody := errorBody{
+			Error:     fmt.Sprintf("%s", err),
+			errorCode: http.StatusInternalServerError,
+		}
+
+		errBody.writeErrorToPage(w)
+		return
+	}
+
+	userID, err := strconv.Atoi(chi.URLParam(r, "userID"))
+	if err != nil {
+		errBody := errorBody{
+			Error:     fmt.Sprintf("%s", err),
+			errorCode: http.StatusInternalServerError,
+		}
+
+		errBody.writeErrorToPage(w)
+		return
+	}
+
+	if userID <= 0 {
+		errBody := errorBody{
+			Error:     fmt.Sprintf("expected valid userID (>0), got %d", userID),
+			errorCode: http.StatusBadRequest,
+		}
+
+		errBody.writeErrorToPage(w)
+		return
+	}
+
+	for _, user := range users {
+		if user.ID == userID {
+			writeSuccessToPage(w, http.StatusOK, user)
+			return
+		}
+	}
+
+	errBody := errorBody{
+		Error:     fmt.Sprintf("could not find userID %d", userID),
+		errorCode: http.StatusNotFound,
+	}
+
+	errBody.writeErrorToPage(w)
+}
+
+// writeUser will persist the user to the database, if the user does not exist
+func (c *APIConfig) writeUser(w http.ResponseWriter, r *http.Request) {
+	type bodyCheck struct {
+		Email string `json:"email"`
+	}
+
+	decoder := json.NewDecoder(r.Body)
+	bodyChk := bodyCheck{}
+
+	// handle a decode error
+
+	if err := decoder.Decode(&bodyChk); err != nil {
+		errBody := errorBody{
+			Error:     fmt.Sprintf("%s", err),
+			errorCode: http.StatusInternalServerError,
+		}
+
+		errBody.writeErrorToPage(w)
+		return
+	}
+
+	user, err := c.db.CreateUser(bodyChk.Email)
+	if err != nil {
+		errBody := errorBody{
+			Error:     fmt.Sprintf("%s", err),
+			errorCode: http.StatusBadRequest,
+		}
+
+		errBody.writeErrorToPage(w)
+		return
+	}
+
+	writeSuccessToPage(w, http.StatusCreated, user)
+}
+
 // getChirps will fetch the chirps from the DB and write to the page
 func (c *APIConfig) getChirps(w http.ResponseWriter, r *http.Request) {
 	chirps, err := c.db.GetChirps()
@@ -96,7 +207,7 @@ func (c *APIConfig) getChirps(w http.ResponseWriter, r *http.Request) {
 	writeSuccessToPage(w, http.StatusOK, chirps)
 }
 
-// getChirps will fetch the chirps from the DB and write to the page
+// getChirpID will fetch a specific chirp from the database
 func (c *APIConfig) getChirpID(w http.ResponseWriter, r *http.Request) {
 	chirps, err := c.db.GetChirps()
 	if err != nil {
@@ -145,7 +256,7 @@ func (c *APIConfig) getChirpID(w http.ResponseWriter, r *http.Request) {
 	errBody.writeErrorToPage(w)
 }
 
-// writeChirps will validate the chirp first, and if successful commit to the db
+// writeChirp will validate the chirp first, and if successful commit to the db
 func (c *APIConfig) writeChirp(w http.ResponseWriter, r *http.Request) {
 	type bodyCheck struct {
 		Body string `json:"body"`
