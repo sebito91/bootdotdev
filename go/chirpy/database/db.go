@@ -26,10 +26,16 @@ type User struct {
 	Email string `json:"email"`
 }
 
+// UserWithPassword is a superset struct for a given user that appends their password (bcrypt-hashed)
+type UserWithPassword struct {
+	User
+	PasswordHash []byte `json:"password"`
+}
+
 // DBStructure is the interface to render the database
 type DBStructure struct {
-	Chirps map[int]Chirp `json:"chirps"`
-	Users  map[int]User  `json:"users"`
+	Chirps map[int]Chirp            `json:"chirps"`
+	Users  map[int]UserWithPassword `json:"users"`
 }
 
 // NewDB creates a new database connection
@@ -48,28 +54,36 @@ func NewDB(path string) (*DB, error) {
 }
 
 // CreateUser creates a new user and saves it to disk
-func (db *DB) CreateUser(email string) (User, error) {
-	var user User
+func (db *DB) CreateUser(email string, password []byte) (User, error) {
+	var user UserWithPassword
 
 	nextUserID, err := db.getNextUserID()
 	if err != nil {
-		return user, err
+		return user.User, err
 	}
 
 	user.ID = nextUserID
 	user.Email = email
+	user.PasswordHash = password
 
 	dbStructure, err := db.loadDB()
 	if err != nil {
-		return user, err
+		return user.User, err
 	}
 
 	if _, ok := dbStructure.Users[user.ID]; ok {
-		return user, fmt.Errorf("expected unique userID but found duplicate at %d", user.ID)
+		return user.User, fmt.Errorf("expected unique userID but found duplicate at %d", user.ID)
+	}
+
+	// check if user already exists and throw an error if they do
+	for _, existingUser := range dbStructure.Users {
+		if user.Email == existingUser.Email {
+			return user.User, fmt.Errorf("found duplicate user with email %s", user.Email)
+		}
 	}
 
 	dbStructure.Users[user.ID] = user
-	return user, db.writeDB(dbStructure)
+	return user.User, db.writeDB(dbStructure)
 }
 
 // CreateChirp creates a new chirp and saves it to disk
@@ -154,7 +168,7 @@ func (db *DB) GetUsers() ([]User, error) {
 
 	users := make([]User, 0, len(dbStructure.Users))
 	for _, user := range dbStructure.Users {
-		users = append(users, user)
+		users = append(users, user.User)
 	}
 
 	return users, nil
@@ -211,7 +225,7 @@ func (db *DB) loadDB() (DBStructure, error) {
 
 	if len(data) == 0 {
 		dbStructure.Chirps = make(map[int]Chirp)
-		dbStructure.Users = make(map[int]User)
+		dbStructure.Users = make(map[int]UserWithPassword)
 
 		return dbStructure, nil
 	}

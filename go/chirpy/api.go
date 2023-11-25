@@ -11,6 +11,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/sebito91/bootdotdev/go/chirpy/database"
+	"golang.org/x/crypto/bcrypt"
 )
 
 // APIConfig is a local struct to keep track of site visits
@@ -159,7 +160,8 @@ func (c *APIConfig) getUserID(w http.ResponseWriter, r *http.Request) {
 // writeUser will persist the user to the database, if the user does not exist
 func (c *APIConfig) writeUser(w http.ResponseWriter, r *http.Request) {
 	type bodyCheck struct {
-		Email string `json:"email"`
+		Email    string `json:"email"`
+		Password string `json:"password"`
 	}
 
 	decoder := json.NewDecoder(r.Body)
@@ -177,7 +179,28 @@ func (c *APIConfig) writeUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := c.db.CreateUser(bodyChk.Email)
+	if bodyChk.Email == "" || bodyChk.Password == "" {
+		errBody := errorBody{
+			Error:     "system requires both a valid email and password",
+			errorCode: http.StatusBadRequest,
+		}
+
+		errBody.writeErrorToPage(w)
+		return
+	}
+
+	passHash, err := bcrypt.GenerateFromPassword([]byte(bodyChk.Password), 0)
+	if err != nil {
+		errBody := errorBody{
+			Error:     "could not encode password, please send valid string",
+			errorCode: http.StatusBadRequest,
+		}
+
+		errBody.writeErrorToPage(w)
+		return
+	}
+
+	user, err := c.db.CreateUser(bodyChk.Email, passHash)
 	if err != nil {
 		errBody := errorBody{
 			Error:     fmt.Sprintf("%s", err),
