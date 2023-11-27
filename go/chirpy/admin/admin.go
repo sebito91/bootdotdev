@@ -1,28 +1,29 @@
-package main
+package admin
 
 import (
 	"fmt"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/sebito91/bootdotdev/go/chirpy/api"
 )
 
-// AdminConfig is a placeholder for our /admin API section
-type AdminConfig struct {
-	API *APIConfig
+// Config is a placeholder for our /admin API section
+type Config struct {
+	API *api.Config
 }
 
-// NewAdminConfig returns an instance of the AdminConfig with proper reference to the APIConfig
-func NewAdminConfig(c *APIConfig) (*AdminConfig, error) {
+// NewConfig returns an instance of the Config with proper reference to the APIConfig
+func NewConfig(c *api.Config) (*Config, error) {
 	if c == nil {
 		return nil, fmt.Errorf("please make sure to initialize the API Config before the Admin Config")
 	}
 
-	return &AdminConfig{c}, nil
+	return &Config{c}, nil
 }
 
 // GetAdminAPI returns the router for the /admin endpoint
-func (c *AdminConfig) GetAdminAPI() chi.Router {
+func (c *Config) GetAdminAPI() chi.Router {
 	r := chi.NewRouter()
 
 	r.Get("/metrics", c.metricsEndpoint)
@@ -33,7 +34,7 @@ func (c *AdminConfig) GetAdminAPI() chi.Router {
 
 // metricsEndpoint will use a write-enabled middleware to display the number
 // of site visits since the start of the server
-func (c *AdminConfig) metricsEndpoint(w http.ResponseWriter, r *http.Request) {
+func (c *Config) metricsEndpoint(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 
 	w.Header().Set("Content-Type", "text/html")
@@ -51,7 +52,7 @@ func (c *AdminConfig) metricsEndpoint(w http.ResponseWriter, r *http.Request) {
 }
 
 // resetEndpoint will reset the number of site visits to 0 during a running server
-func (c *AdminConfig) resetEndpoint(w http.ResponseWriter, r *http.Request) {
+func (c *Config) resetEndpoint(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")

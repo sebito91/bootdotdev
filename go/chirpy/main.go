@@ -6,31 +6,33 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/sebito91/bootdotdev/go/chirpy/admin"
+	"github.com/sebito91/bootdotdev/go/chirpy/api"
 )
 
 func main() {
 	fmt.Println("Welcome to Chirpy!")
 
 	appPrefix := "/app"
-	apiCfg, apiErr := NewAPIConfig()
+	apiCfg, apiErr := api.NewConfig()
 	if apiErr != nil {
 		panic(apiErr)
 	}
 
-	adminCfg, adminErr := NewAdminConfig(apiCfg)
+	adminCfg, adminErr := admin.NewConfig(apiCfg)
 	if adminErr != nil {
 		panic(adminErr)
 	}
 
 	mainHandler := http.StripPrefix(appPrefix, http.FileServer(http.Dir(".")))
-	fsHandler := apiCfg.middlewareMetricsInc(mainHandler)
+	fsHandler := apiCfg.MiddlewareMetricsInc(mainHandler)
 
 	// kick off the new multiplexer
 	r := chi.NewRouter()
 	r.Handle(appPrefix, fsHandler)
 	r.Handle(appPrefix+"/*", fsHandler)
 
-	r.Mount("/api", apiCfg.middlewareMetricsInc(apiCfg.GetAPI()))
+	r.Mount("/api", apiCfg.MiddlewareMetricsInc(apiCfg.GetAPI()))
 	r.Mount("/admin", adminCfg.GetAdminAPI())
 
 	// wrap the mux in a custom middleware for CORS headers
