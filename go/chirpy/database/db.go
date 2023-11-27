@@ -159,6 +159,21 @@ func (db *DB) getNextChirpID() (int, error) {
 	return ids[0] + 1, nil
 }
 
+// GetUsersFull return all users in the database with hashed passwords
+func (db *DB) GetUsersFull() ([]UserWithPassword, error) {
+	dbStructure, err := db.loadDB()
+	if err != nil {
+		return nil, err
+	}
+
+	users := make([]UserWithPassword, 0, len(dbStructure.Users))
+	for _, user := range dbStructure.Users {
+		users = append(users, user)
+	}
+
+	return users, nil
+}
+
 // GetUsers returns all users in the database
 func (db *DB) GetUsers() ([]User, error) {
 	dbStructure, err := db.loadDB()
