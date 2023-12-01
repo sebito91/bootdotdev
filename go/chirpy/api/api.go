@@ -56,6 +56,7 @@ func (c *Config) GetAPI() chi.Router {
 	r.Route("/users", func(r chi.Router) {
 		r.Get("/", c.getUsers)
 		r.Post("/", c.writeUser)
+		r.Put("/", c.updateUser)
 
 		r.Route("/{userID}", func(r chi.Router) {
 			r.Get("/", c.getUserByID)

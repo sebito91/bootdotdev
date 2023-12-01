@@ -46,7 +46,7 @@ func NewDB(path string) (*DB, error) {
 	}
 
 	db := &DB{path: path}
-	if err := db.ensureDB(); err != nil {
+	if err := db.reassureDB(); err != nil {
 		return nil, err
 	}
 
@@ -204,8 +204,25 @@ func (db *DB) GetChirps() ([]Chirp, error) {
 	return chirps, nil
 }
 
-// ensureDB creates a new database file if it doesn't exist
-func (db *DB) ensureDB() error {
+// UpdateUser will update the existing user at userID with a new email/password combination
+func (db *DB) UpdateUser(userID int, email string, passwordHash []byte) (User, error) {
+	var user UserWithPassword
+
+	user.ID = userID
+	user.Email = email
+	user.PasswordHash = passwordHash
+
+	dbStructure, err := db.loadDB()
+	if err != nil {
+		return user.User, err
+	}
+
+	dbStructure.Users[user.ID] = user
+	return user.User, db.writeDB(dbStructure)
+}
+
+// reassureDB creates a new database file if it doesn't exist
+func (db *DB) reassureDB() error {
 	db.mux.Lock()
 	defer db.mux.Unlock()
 
@@ -226,7 +243,7 @@ func (db *DB) ensureDB() error {
 func (db *DB) loadDB() (DBStructure, error) {
 	var dbStructure DBStructure
 
-	if err := db.ensureDB(); err != nil {
+	if err := db.reassureDB(); err != nil {
 		return dbStructure, err
 	}
 
