@@ -6,6 +6,7 @@ import (
 	"os"
 	"sort"
 	"sync"
+	"time"
 )
 
 // DB is the struct to point at our database.json file
@@ -32,10 +33,17 @@ type UserWithPassword struct {
 	PasswordHash []byte `json:"password"`
 }
 
+// RevokedToken is the struct to consume the revoked tokens within the database
+type RevokedToken struct {
+	RevokedAt time.Time `json:"revoked_at"`
+	Token     string    `json:"token"`
+}
+
 // DBStructure is the interface to render the database
 type DBStructure struct {
-	Chirps map[int]Chirp            `json:"chirps"`
-	Users  map[int]UserWithPassword `json:"users"`
+	Chirps        map[int]Chirp            `json:"chirps"`
+	Users         map[int]UserWithPassword `json:"users"`
+	RevokedTokens map[int]RevokedToken     `json:"revoked_tokens"`
 }
 
 // NewDB creates a new database connection
@@ -109,6 +117,30 @@ func (db *DB) CreateChirp(body string) (Chirp, error) {
 
 	dbStructure.Chirps[chirp.ID] = chirp
 	return chirp, db.writeDB(dbStructure)
+}
+
+// getNextRevokedTokenID is a helper function to determine the next revoked token ID from the database
+func (db *DB) getNextRevokedTokenID() (int, error) {
+	revokedTokens, err := db.GetRevokedTokens()
+	if err != nil {
+		return -1, err
+	}
+
+	if len(revokedTokens) == 0 {
+		return 1, nil
+	}
+
+	ids := make([]int, len(revokedTokens))
+	for idx, _ := range revokedTokens {
+		ids = append(ids, idx)
+	}
+
+	// sort the IDs in descending order
+	sort.Slice(ids, func(a, b int) bool {
+		return ids[a] > ids[b]
+	})
+
+	return ids[0] + 1, nil
 }
 
 // getNextUserID is a helper function to determine the next user's ID from the database
@@ -204,6 +236,41 @@ func (db *DB) GetChirps() ([]Chirp, error) {
 	return chirps, nil
 }
 
+// GetRevokedTokens retrieves the set of revoked tokens from the database
+func (db *DB) GetRevokedTokens() ([]RevokedToken, error) {
+	dbStructure, err := db.loadDB()
+	if err != nil {
+		return nil, err
+	}
+
+	revokedTokens := make([]RevokedToken, 0, len(dbStructure.RevokedTokens))
+	for _, revokedToken := range dbStructure.RevokedTokens {
+		revokedTokens = append(revokedTokens, revokedToken)
+	}
+
+	return revokedTokens, nil
+}
+
+// RevokeToken will revoke the provided token from the database
+func (db *DB) RevokeToken(token string) error {
+	dbStructure, err := db.loadDB()
+	if err != nil {
+		return err
+	}
+
+	nextID, err := db.getNextRevokedTokenID()
+	if err != nil {
+		return err
+	}
+
+	dbStructure.RevokedTokens[nextID] = RevokedToken{
+		RevokedAt: time.Now(),
+		Token:     token,
+	}
+
+	return db.writeDB(dbStructure)
+}
+
 // UpdateUser will update the existing user at userID with a new email/password combination
 func (db *DB) UpdateUser(userID int, email string, passwordHash []byte) (User, error) {
 	var user UserWithPassword
@@ -258,6 +325,7 @@ func (db *DB) loadDB() (DBStructure, error) {
 	if len(data) == 0 {
 		dbStructure.Chirps = make(map[int]Chirp)
 		dbStructure.Users = make(map[int]UserWithPassword)
+		dbStructure.RevokedTokens = make(map[int]RevokedToken)
 
 		return dbStructure, nil
 	}

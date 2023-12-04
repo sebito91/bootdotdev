@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
-	"strings"
-	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/golang-jwt/jwt/v5"
@@ -34,9 +32,8 @@ func (c *Config) getUsers(w http.ResponseWriter, r *http.Request) {
 // doesn't exist, an error is sent
 func (c *Config) loginUser(w http.ResponseWriter, r *http.Request) {
 	type bodyCheck struct {
-		Email            string `json:"email"`
-		Password         string `json:"password"`
-		ExpiresInSeconds int    `json:"expires_in_seconds,omitempty"`
+		Email    string `json:"email"`
+		Password string `json:"password"`
 	}
 
 	decoder := json.NewDecoder(r.Body)
@@ -74,16 +71,12 @@ func (c *Config) loginUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// if the ExpiresInSeconds param is either not present, or is >24h, we set to 24h
-	if bodyChk.ExpiresInSeconds == 0 || bodyChk.ExpiresInSeconds > (60*60*24) {
-		bodyChk.ExpiresInSeconds = 60 * 60 * 24
-	}
-
 	for _, user := range users {
 		passErr := bcrypt.CompareHashAndPassword(user.PasswordHash, []byte(bodyChk.Password))
 		if user.Email == bodyChk.Email {
 			if passErr == nil {
-				token, err := c.generateJWT(bodyChk.ExpiresInSeconds, user.ID)
+				// default token expiration is 1 hour -> 60 * 60
+				token, err := c.generateJWT(chirpyAccess, (60 * 60), user.ID)
 				if err != nil {
 					errBody := errorBody{
 						Error:     fmt.Sprintf("token generate: %s", err),
@@ -94,12 +87,25 @@ func (c *Config) loginUser(w http.ResponseWriter, r *http.Request) {
 					return
 				}
 
+				// refreshToken is 60-days -> 60 * 60 * 24 * 60
+				refreshToken, err := c.generateJWT(chirpyRefresh, (60 * 60 * 24 * 60), user.ID)
+				if err != nil {
+					errBody := errorBody{
+						Error:     fmt.Sprintf("refresh token generate: %s", err),
+						errorCode: http.StatusInternalServerError,
+					}
+
+					errBody.writeErrorToPage(w)
+					return
+				}
+
 				writeSuccessToPage(w, http.StatusOK, struct {
-					ID    int    `json:"id"`
-					Email string `json:"email"`
-					Token string `json:"token"`
+					ID           int    `json:"id"`
+					Email        string `json:"email"`
+					Token        string `json:"token"`
+					RefreshToken string `json:"refresh_token"`
 				}{
-					ID: user.ID, Email: user.Email, Token: token})
+					ID: user.ID, Email: user.Email, Token: token, RefreshToken: refreshToken})
 				return
 			}
 
@@ -119,45 +125,6 @@ func (c *Config) loginUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	errBody.writeErrorToPage(w)
-}
-
-// generateJWT is a helper function to generate a JWT based on the ID of the user and an expiration timeout (in seconds)
-func (c *Config) generateJWT(expiresInSeconds, id int) (string, error) {
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, &jwt.RegisteredClaims{
-		Issuer:    "chirpy",
-		IssuedAt:  jwt.NewNumericDate(time.Now().UTC()),
-		ExpiresAt: jwt.NewNumericDate(time.Now().UTC().Add(time.Second * time.Duration(expiresInSeconds))),
-		Subject:   fmt.Sprintf("%d", id),
-	})
-
-	return token.SignedString([]byte(c.jwtSecret))
-}
-
-// fetchToken is a helper function to extract the JWT from a given request
-func fetchToken(r *http.Request) (string, error) {
-	bearer := r.Header.Get("Authorization")
-	if bearer == "" {
-		return "", fmt.Errorf("expected Authorization token, got %s", bearer)
-	}
-
-	return strings.TrimPrefix(bearer, "Bearer "), nil
-}
-
-// decodeJWT takes an encoded JWT from a request and parses it into a *jwt.Token object for use within functions;
-// will return an error if the token is invalid
-func (c *Config) decodeJWT(bearer string) (*jwt.Token, error) {
-	token, err := jwt.ParseWithClaims(bearer, &jwt.RegisteredClaims{}, func(t *jwt.Token) (interface{}, error) {
-		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("unexpected signing method, expected HMAC, got %v", t.Header["alg"])
-		}
-
-		return []byte(c.jwtSecret), nil
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return token, nil
 }
 
 // getUserByID will fetch the specific user with the provided userID from the database
@@ -334,6 +301,24 @@ func (c *Config) updateUser(w http.ResponseWriter, r *http.Request) {
 		errBody := errorBody{
 			Error:     fmt.Sprintf("%s", err),
 			errorCode: respCode,
+		}
+
+		errBody.writeErrorToPage(w)
+		return
+	}
+
+	if issuer, claimErr := claims.GetIssuer(); claimErr != nil {
+		errBody := errorBody{
+			Error:     fmt.Sprintf("%s", claimErr),
+			errorCode: http.StatusBadRequest,
+		}
+
+		errBody.writeErrorToPage(w)
+		return
+	} else if issuer == chirpyRefresh {
+		errBody := errorBody{
+			Error:     "cannot use refresh token for update request, please provide valid access token",
+			errorCode: http.StatusUnauthorized,
 		}
 
 		errBody.writeErrorToPage(w)

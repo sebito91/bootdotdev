@@ -63,7 +63,10 @@ func (c *Config) GetAPI() chi.Router {
 		})
 	})
 
+	// token-related exercises
 	r.Post("/login", c.loginUser)
+	r.Post("/refresh", c.refreshToken)
+	r.Post("/revoke", c.revokeToken)
 
 	return r
 }
