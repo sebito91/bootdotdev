@@ -24,8 +24,9 @@ type Chirp struct {
 
 // User is the default struct to represent an individual user in the database
 type User struct {
-	ID    int    `json:"id"`
-	Email string `json:"email"`
+	ID          int    `json:"id"`
+	Email       string `json:"email"`
+	IsChirpyRed bool   `json:"is_chirpy_red"`
 }
 
 // UserWithPassword is a superset struct for a given user that appends their password (bcrypt-hashed)
@@ -223,6 +224,24 @@ func (db *DB) GetUsers() ([]User, error) {
 	return users, nil
 }
 
+// GetUserByID returns the given user based on its ID, otherwise an error is returned
+func (db *DB) GetUserByID(userIDToFind int) (User, error) {
+	dbStructure, err := db.loadDB()
+	if err != nil {
+		return User{}, err
+	}
+
+	user, ok := dbStructure.Users[userIDToFind]
+	if !ok {
+		return User{}, fmt.Errorf("could not find userID %d", userIDToFind)
+	}
+
+	return User{
+		Email:       user.Email,
+		ID:          user.ID,
+		IsChirpyRed: user.IsChirpyRed}, nil
+}
+
 // GetChirps returns all chirps in the database
 func (db *DB) GetChirps() ([]Chirp, error) {
 	dbStructure, err := db.loadDB()
@@ -304,6 +323,24 @@ func (db *DB) UpdateUser(userID int, email string, passwordHash []byte) (User, e
 
 	dbStructure.Users[user.ID] = user
 	return user.User, db.writeDB(dbStructure)
+}
+
+// UpdateUserToRed will update the existing user to the ChirpyRed service
+func (db *DB) UpdateUserToRed(userID int) error {
+	dbStructure, err := db.loadDB()
+	if err != nil {
+		return err
+	}
+
+	user, ok := dbStructure.Users[userID]
+	if !ok {
+		return fmt.Errorf("could not find userID %d when converting to ChirpyRed", userID)
+	}
+
+	user.IsChirpyRed = true
+
+	dbStructure.Users[user.ID] = user
+	return db.writeDB(dbStructure)
 }
 
 // reassureDB creates a new database file if it doesn't exist

@@ -102,10 +102,11 @@ func (c *Config) loginUser(w http.ResponseWriter, r *http.Request) {
 				writeSuccessToPage(w, http.StatusOK, struct {
 					ID           int    `json:"id"`
 					Email        string `json:"email"`
+					IsChirpyRed  bool   `json:"is_chirpy_red"`
 					Token        string `json:"token"`
 					RefreshToken string `json:"refresh_token"`
 				}{
-					ID: user.ID, Email: user.Email, Token: token, RefreshToken: refreshToken})
+					ID: user.ID, Email: user.Email, IsChirpyRed: user.IsChirpyRed, Token: token, RefreshToken: refreshToken})
 				return
 			}
 

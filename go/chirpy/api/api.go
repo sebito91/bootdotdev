@@ -69,5 +69,10 @@ func (c *Config) GetAPI() chi.Router {
 	r.Post("/refresh", c.refreshToken)
 	r.Post("/revoke", c.revokeToken)
 
+	// webhooks
+	r.Route("/polka", func(r chi.Router) {
+		r.Post("/webhooks", c.processPolkaUpdate)
+	})
+
 	return r
 }
