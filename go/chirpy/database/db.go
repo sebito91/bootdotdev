@@ -257,6 +257,23 @@ func (db *DB) GetChirps() ([]Chirp, error) {
 	return chirps, nil
 }
 
+// GetChirpsByAuthorID returns all of the chirps by a given userID (author)
+func (db *DB) GetChirpyByAuthorID(authorID int) ([]Chirp, error) {
+	chirps, err := db.GetChirps()
+	if err != nil {
+		return nil, err
+	}
+
+	chirpsByAuthor := make([]Chirp, 0, len(chirps))
+	for _, chirp := range chirps {
+		if chirp.AuthorID == authorID {
+			chirpsByAuthor = append(chirpsByAuthor, chirp)
+		}
+	}
+
+	return chirpsByAuthor, nil
+}
+
 // DeleteChirp will remove the provided chirp from the database
 func (db *DB) DeleteChirp(chirpToDelete Chirp) error {
 	dbStructure, err := db.loadDB()

@@ -23,7 +23,35 @@ func (c *Config) getChirps(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeSuccessToPage(w, http.StatusOK, chirps)
+	authorIDParam := r.URL.Query().Get("author_id")
+	if authorIDParam == "" {
+		writeSuccessToPage(w, http.StatusOK, chirps)
+		return
+	}
+
+	authorID, err := strconv.Atoi(authorIDParam)
+	if err != nil {
+		errBody := errorBody{
+			Error:     fmt.Sprintf("%s", err),
+			errorCode: http.StatusInternalServerError,
+		}
+
+		errBody.writeErrorToPage(w)
+		return
+	}
+
+	chirpsByAuthor, err := c.db.GetChirpyByAuthorID(authorID)
+	if err != nil {
+		errBody := errorBody{
+			Error:     fmt.Sprintf("%s", err),
+			errorCode: http.StatusBadRequest,
+		}
+
+		errBody.writeErrorToPage(w)
+		return
+	}
+
+	writeSuccessToPage(w, http.StatusOK, chirpsByAuthor)
 }
 
 // getChirpByID will fetch a specific chirp from the database
