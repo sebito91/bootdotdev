@@ -49,7 +49,8 @@ func (c *Config) GetAPI() chi.Router {
 		r.Post("/", c.writeChirp)
 
 		r.Route("/{chirpID}", func(r chi.Router) {
-			r.Get("/", c.getChirpID)
+			r.Get("/", c.getChirpByID)
+			r.Delete("/", c.deleteChirpByID)
 		})
 	})
 

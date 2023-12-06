@@ -238,6 +238,22 @@ func (db *DB) GetChirps() ([]Chirp, error) {
 	return chirps, nil
 }
 
+// DeleteChirp will remove the provided chirp from the database
+func (db *DB) DeleteChirp(chirpToDelete Chirp) error {
+	dbStructure, err := db.loadDB()
+	if err != nil {
+		return err
+	}
+
+	for idx, chirp := range dbStructure.Chirps {
+		if chirp.ID == chirpToDelete.ID {
+			delete(dbStructure.Chirps, idx)
+		}
+	}
+
+	return db.writeDB(dbStructure)
+}
+
 // GetRevokedTokens retrieves the set of revoked tokens from the database
 func (db *DB) GetRevokedTokens() ([]RevokedToken, error) {
 	dbStructure, err := db.loadDB()

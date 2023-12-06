@@ -26,8 +26,8 @@ func (c *Config) getChirps(w http.ResponseWriter, r *http.Request) {
 	writeSuccessToPage(w, http.StatusOK, chirps)
 }
 
-// getChirpID will fetch a specific chirp from the database
-func (c *Config) getChirpID(w http.ResponseWriter, r *http.Request) {
+// getChirpByID will fetch a specific chirp from the database
+func (c *Config) getChirpByID(w http.ResponseWriter, r *http.Request) {
 	chirps, err := c.db.GetChirps()
 	if err != nil {
 		errBody := errorBody{
@@ -69,6 +69,126 @@ func (c *Config) getChirpID(w http.ResponseWriter, r *http.Request) {
 
 	errBody := errorBody{
 		Error:     fmt.Sprintf("could not find chirpID %d", chirpID),
+		errorCode: http.StatusNotFound,
+	}
+
+	errBody.writeErrorToPage(w)
+}
+
+// deleteChirpByID will delete a specific chirp from the database if the user is authorized to do so
+// the JWT from the request is validated, and if the authenticated user matches the author_id of the given
+// chirp, then the system will remove the chirp from the database.
+func (c *Config) deleteChirpByID(w http.ResponseWriter, r *http.Request) {
+	chirps, err := c.db.GetChirps()
+	if err != nil {
+		errBody := errorBody{
+			Error:     fmt.Sprintf("%s", err),
+			errorCode: http.StatusInternalServerError,
+		}
+
+		errBody.writeErrorToPage(w)
+		return
+	}
+
+	chirpID, err := strconv.Atoi(chi.URLParam(r, "chirpID"))
+	if err != nil {
+		errBody := errorBody{
+			Error:     fmt.Sprintf("%s", err),
+			errorCode: http.StatusInternalServerError,
+		}
+
+		errBody.writeErrorToPage(w)
+		return
+	}
+
+	if chirpID <= 0 {
+		errBody := errorBody{
+			Error:     fmt.Sprintf("expected valid chirpID (>0), got %d", chirpID),
+			errorCode: http.StatusBadRequest,
+		}
+
+		errBody.writeErrorToPage(w)
+		return
+	}
+
+	claims, respCode, err := c.fetchClaims(r)
+	if err != nil {
+		errBody := errorBody{
+			Error:     fmt.Sprintf("%s", err),
+			errorCode: respCode,
+		}
+
+		errBody.writeErrorToPage(w)
+		return
+	}
+
+	if issuer, claimErr := claims.GetIssuer(); claimErr != nil {
+		errBody := errorBody{
+			Error:     fmt.Sprintf("%s", claimErr),
+			errorCode: http.StatusBadRequest,
+		}
+
+		errBody.writeErrorToPage(w)
+		return
+	} else if issuer == chirpyRefresh {
+		errBody := errorBody{
+			Error:     "cannot use refresh token for delete chirp request, please provide valid access token",
+			errorCode: http.StatusUnauthorized,
+		}
+
+		errBody.writeErrorToPage(w)
+		return
+	}
+
+	idString, err := claims.GetSubject()
+	if err != nil {
+		errBody := errorBody{
+			Error:     fmt.Sprintf("%s", err),
+			errorCode: http.StatusBadRequest,
+		}
+
+		errBody.writeErrorToPage(w)
+		return
+	}
+
+	authorID, err := strconv.Atoi(idString)
+	if err != nil {
+		errBody := errorBody{
+			Error:     fmt.Sprintf("could not convert userID to string: %s", err),
+			errorCode: http.StatusInternalServerError,
+		}
+
+		errBody.writeErrorToPage(w)
+		return
+	}
+
+	for _, chirp := range chirps {
+		if chirp.ID == chirpID && chirp.AuthorID == authorID {
+			if err := c.db.DeleteChirp(chirp); err != nil {
+				errBody := errorBody{
+					Error:     fmt.Sprintf("could not delete chirpID %d: %s", chirpID, err),
+					errorCode: http.StatusInternalServerError,
+				}
+
+				errBody.writeErrorToPage(w)
+				return
+			}
+
+			writeSuccessToPage(w, http.StatusOK, nil)
+			return
+		} else if chirp.ID == chirpID && chirp.AuthorID != authorID {
+			errBody := errorBody{
+				Error:     fmt.Sprintf("cannot delete chirpID %d by authorID %d, unauthorized", chirpID, authorID),
+				errorCode: http.StatusForbidden,
+			}
+
+			errBody.writeErrorToPage(w)
+			return
+		}
+	}
+
+	errBody := errorBody{
+		Error:     fmt.Sprintf("could not find chirpID %d by author %d", chirpID, authorID),
 		errorCode: http.StatusNotFound,
 	}
 
