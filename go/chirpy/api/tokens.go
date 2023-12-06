@@ -35,6 +35,16 @@ func fetchToken(r *http.Request) (string, error) {
 	return strings.TrimPrefix(bearer, "Bearer "), nil
 }
 
+// fetchAPIToken is a helper function to extract the APIKey from a given request
+func fetchAPIToken(r *http.Request) (string, error) {
+	bearer := r.Header.Get("Authorization")
+	if bearer == "" {
+		return "", fmt.Errorf("expected Authorization token, got %s", bearer)
+	}
+
+	return strings.TrimPrefix(bearer, "ApiKey "), nil
+}
+
 // decodeJWT takes an encoded JWT from a request and parses it into a *jwt.Token object for use within functions;
 // will return an error if the token is invalid
 func (c *Config) decodeJWT(bearer string) (*jwt.Token, error) {

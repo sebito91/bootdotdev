@@ -23,6 +23,25 @@ func (c *Config) processPolkaUpdate(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	eventData := event{}
 
+	apiKey, err := fetchAPIToken(r)
+	if err != nil {
+		errBody := errorBody{
+			Error:     fmt.Sprintf("%s", err),
+			errorCode: http.StatusUnauthorized,
+		}
+
+		errBody.writeErrorToPage(w)
+		return
+	} else if apiKey != c.polkaAPIKey {
+		errBody := errorBody{
+			Error:     "received incorrect ApiKey",
+			errorCode: http.StatusUnauthorized,
+		}
+
+		errBody.writeErrorToPage(w)
+		return
+	}
+
 	// handle a decode error
 	if err := decoder.Decode(&eventData); err != nil {
 		errBody := errorBody{

@@ -14,6 +14,7 @@ import (
 type Config struct {
 	fileserverHits int
 	jwtSecret      string
+	polkaAPIKey    string
 	db             *database.DB
 	mux            sync.RWMutex
 }
@@ -35,7 +36,7 @@ func NewConfig() (*Config, error) {
 		return nil, err
 	}
 
-	return &Config{db: db, jwtSecret: os.Getenv("JWT_SECRET")}, nil
+	return &Config{db: db, jwtSecret: os.Getenv("JWT_SECRET"), polkaAPIKey: os.Getenv("POLKA_API_KEY")}, nil
 }
 
 // GetAPI returns the router for the /api endpoint
