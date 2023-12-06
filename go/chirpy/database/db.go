@@ -17,8 +17,9 @@ type DB struct {
 
 // Chirp is the default struct for each individual chirp within the system
 type Chirp struct {
-	ID   int    `json:"id"`
-	Body string `json:"body"`
+	ID       int    `json:"id"`
+	AuthorID int    `json:"author_id"`
+	Body     string `json:"body"`
 }
 
 // User is the default struct to represent an individual user in the database
@@ -95,7 +96,7 @@ func (db *DB) CreateUser(email string, password []byte) (User, error) {
 }
 
 // CreateChirp creates a new chirp and saves it to disk
-func (db *DB) CreateChirp(body string) (Chirp, error) {
+func (db *DB) CreateChirp(authorID int, body string) (Chirp, error) {
 	var chirp Chirp
 
 	nextChirpID, err := db.getNextChirpID()
@@ -104,6 +105,7 @@ func (db *DB) CreateChirp(body string) (Chirp, error) {
 	}
 
 	chirp.ID = nextChirpID
+	chirp.AuthorID = authorID
 	chirp.Body = body
 
 	dbStructure, err := db.loadDB()

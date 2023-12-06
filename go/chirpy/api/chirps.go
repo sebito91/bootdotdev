@@ -106,7 +106,58 @@ func (c *Config) writeChirp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	chirp, err := c.db.CreateChirp(cleanedBody(bodyChk.Body))
+	claims, respCode, err := c.fetchClaims(r)
+	if err != nil {
+		errBody := errorBody{
+			Error:     fmt.Sprintf("%s", err),
+			errorCode: respCode,
+		}
+
+		errBody.writeErrorToPage(w)
+		return
+	}
+
+	if issuer, claimErr := claims.GetIssuer(); claimErr != nil {
+		errBody := errorBody{
+			Error:     fmt.Sprintf("%s", claimErr),
+			errorCode: http.StatusBadRequest,
+		}
+
+		errBody.writeErrorToPage(w)
+		return
+	} else if issuer == chirpyRefresh {
+		errBody := errorBody{
+			Error:     "cannot use refresh token for chirp request, please provide valid access token",
+			errorCode: http.StatusUnauthorized,
+		}
+
+		errBody.writeErrorToPage(w)
+		return
+	}
+
+	idString, err := claims.GetSubject()
+	if err != nil {
+		errBody := errorBody{
+			Error:     fmt.Sprintf("%s", err),
+			errorCode: http.StatusBadRequest,
+		}
+
+		errBody.writeErrorToPage(w)
+		return
+	}
+
+	authorID, err := strconv.Atoi(idString)
+	if err != nil {
+		errBody := errorBody{
+			Error:     fmt.Sprintf("could not convert userID to string: %s", err),
+			errorCode: http.StatusInternalServerError,
+		}
+
+		errBody.writeErrorToPage(w)
+		return
+	}
+
+	chirp, err := c.db.CreateChirp(authorID, cleanedBody(bodyChk.Body))
 	if err != nil {
 		errBody := errorBody{
 			Error:     fmt.Sprintf("%s", err),
