@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
+	"sort"
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
@@ -21,6 +22,19 @@ func (c *Config) getChirps(w http.ResponseWriter, r *http.Request) {
 
 		errBody.writeErrorToPage(w)
 		return
+	}
+
+	sortOrder := r.URL.Query().Get("sort")
+	if sortOrder == "desc" {
+		// sort the IDs in descending order
+		sort.Slice(chirps, func(a, b int) bool {
+			return chirps[a].ID > chirps[b].ID
+		})
+	} else {
+		// sort the IDs in ascending order
+		sort.Slice(chirps, func(a, b int) bool {
+			return chirps[a].ID < chirps[b].ID
+		})
 	}
 
 	authorIDParam := r.URL.Query().Get("author_id")
@@ -40,7 +54,7 @@ func (c *Config) getChirps(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	chirpsByAuthor, err := c.db.GetChirpyByAuthorID(authorID)
+	chirpsByAuthor, err := c.db.GetChirpsByAuthorID(authorID)
 	if err != nil {
 		errBody := errorBody{
 			Error:     fmt.Sprintf("%s", err),
@@ -49,6 +63,18 @@ func (c *Config) getChirps(w http.ResponseWriter, r *http.Request) {
 
 		errBody.writeErrorToPage(w)
 		return
+	}
+
+	if sortOrder == "desc" {
+		// sort the IDs in descending order
+		sort.Slice(chirpsByAuthor, func(a, b int) bool {
+			return chirpsByAuthor[a].ID > chirpsByAuthor[b].ID
+		})
+	} else {
+		// sort the IDs in ascending order
+		sort.Slice(chirpsByAuthor, func(a, b int) bool {
+			return chirpsByAuthor[a].ID < chirpsByAuthor[b].ID
+		})
 	}
 
 	writeSuccessToPage(w, http.StatusOK, chirpsByAuthor)

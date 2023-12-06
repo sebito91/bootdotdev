@@ -258,7 +258,7 @@ func (db *DB) GetChirps() ([]Chirp, error) {
 }
 
 // GetChirpsByAuthorID returns all of the chirps by a given userID (author)
-func (db *DB) GetChirpyByAuthorID(authorID int) ([]Chirp, error) {
+func (db *DB) GetChirpsByAuthorID(authorID int) ([]Chirp, error) {
 	chirps, err := db.GetChirps()
 	if err != nil {
 		return nil, err
