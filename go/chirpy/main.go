@@ -13,7 +13,7 @@ import (
 func main() {
 	fmt.Println("Welcome to Chirpy!")
 
-	appPrefix := "/app"
+	appPrefix := "/"
 	apiCfg, apiErr := api.NewConfig()
 	if apiErr != nil {
 		panic(apiErr)
