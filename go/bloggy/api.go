@@ -7,19 +7,37 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 	"github.com/joho/godotenv"
 	"github.com/sebito91/bootdotdev/go/bloggy/internal/database"
 )
 
-type apiConfig struct {
+// APIConfig is a struct to hold references to our database, router, and other components
+type APIConfig struct {
 	DB     *database.Queries
 	Router chi.Router
 }
 
 // GetAPI generates the new route for the aggregator and returns a handle to the router
-func GetAPI() (*apiConfig, error) {
+func GetAPI() (*APIConfig, error) {
+	api := &APIConfig{}
+
+	err := godotenv.Load()
+	if err != nil {
+		return api, err
+	}
+
+	dbURL := os.Getenv("CONN")
+	db, err := sql.Open("postgres", dbURL)
+	if err != nil {
+		return api, err
+	}
+
+	api.DB = database.New(db)
+
 	r := chi.NewRouter()
 
 	r.Route("/v1", func(r chi.Router) {
@@ -27,20 +45,54 @@ func GetAPI() (*apiConfig, error) {
 
 		r.Get("/readiness", readinessEndpoint)
 		r.Get("/err", errorTester)
+
+		r.Post("/users", api.createUser)
 	})
 
-	err := godotenv.Load()
-	if err != nil {
-		return nil, err
+	api.Router = r
+	return api, nil
+}
+
+// createUser will generate a new user in the database with all of the corresponding fields
+func (api *APIConfig) createUser(w http.ResponseWriter, r *http.Request) {
+	type newUserCheck struct {
+		Name string `json:"name"`
 	}
 
-	dbURL := os.Getenv("CONN")
-	db, err := sql.Open("postgres", dbURL)
-	if err != nil {
-		return nil, err
+	decoder := json.NewDecoder(r.Body)
+	newUserChk := newUserCheck{}
+
+	if err := decoder.Decode(&newUserChk); err != nil {
+		respondWithError(w, http.StatusBadRequest, fmt.Sprintf("createUser: could not decode JSON payload: %s", err))
+		return
 	}
 
-	return &apiConfig{DB: database.New(db), Router: r}, nil
+	if newUserChk.Name == "" {
+		respondWithError(w, http.StatusBadRequest, "createUser: did not receive value for `name` field")
+		return
+	}
+
+	newUUID, err := uuid.NewRandom()
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, fmt.Sprintf("createUser: %s", err))
+		return
+	}
+
+	newTime := time.Now()
+	newUser := database.CreateUserParams{
+		ID:        newUUID,
+		CreatedAt: newTime,
+		UpdatedAt: newTime,
+		Name:      newUserChk.Name,
+	}
+
+	user, err := api.DB.CreateUser(r.Context(), newUser)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, fmt.Sprintf("createUser: %s", err))
+		return
+	}
+
+	respondWithJSON(w, http.StatusCreated, user)
 }
 
 func mainPage(w http.ResponseWriter, r *http.Request) {
