@@ -2,8 +2,10 @@ package main
 
 import (
 	"fmt"
+	"net/http"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/joho/godotenv"
 )
@@ -23,4 +25,22 @@ func main() {
 	}
 
 	fmt.Printf("we're using port: %d\n", port)
+
+	r, err := GetAPI()
+	if err != nil {
+		panic(err)
+	}
+
+	corsMux := middlewareCors(r)
+
+	// create the server struct
+	server := &http.Server{
+		Addr:              fmt.Sprintf("localhost:%d", port),
+		Handler:           corsMux,
+		ReadHeaderTimeout: time.Second,
+	}
+
+	if err := server.ListenAndServe(); err != nil {
+		panic(err)
+	}
 }
