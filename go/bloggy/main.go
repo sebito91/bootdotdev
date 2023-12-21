@@ -27,12 +27,12 @@ func main() {
 
 	fmt.Printf("we're using port: %d\n", port)
 
-	r, err := GetAPI()
+	api, err := GetAPI()
 	if err != nil {
 		panic(err)
 	}
 
-	corsMux := middlewareCors(r)
+	corsMux := middlewareCors(api.Router)
 
 	// create the server struct
 	server := &http.Server{

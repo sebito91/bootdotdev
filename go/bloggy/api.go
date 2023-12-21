@@ -1,16 +1,25 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/joho/godotenv"
+	"github.com/sebito91/bootdotdev/go/bloggy/internal/database"
 )
 
+type apiConfig struct {
+	DB     *database.Queries
+	Router chi.Router
+}
+
 // GetAPI generates the new route for the aggregator and returns a handle to the router
-func GetAPI() (chi.Router, error) {
+func GetAPI() (*apiConfig, error) {
 	r := chi.NewRouter()
 
 	r.Route("/v1", func(r chi.Router) {
@@ -20,7 +29,18 @@ func GetAPI() (chi.Router, error) {
 		r.Get("/err", errorTester)
 	})
 
-	return r, nil
+	err := godotenv.Load()
+	if err != nil {
+		return nil, err
+	}
+
+	dbURL := os.Getenv("CONN")
+	db, err := sql.Open("postgres", dbURL)
+	if err != nil {
+		return nil, err
+	}
+
+	return &apiConfig{DB: database.New(db), Router: r}, nil
 }
 
 func mainPage(w http.ResponseWriter, r *http.Request) {
