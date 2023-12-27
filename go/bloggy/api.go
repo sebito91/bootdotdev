@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"time"
@@ -46,6 +45,7 @@ func GetAPI() (*APIConfig, error) {
 		r.Get("/readiness", readinessEndpoint)
 		r.Get("/err", errorTester)
 
+		r.Get("/users", api.getUserByAPIKey)
 		r.Post("/users", api.createUser)
 	})
 
@@ -95,47 +95,26 @@ func (api *APIConfig) createUser(w http.ResponseWriter, r *http.Request) {
 	respondWithJSON(w, http.StatusCreated, user)
 }
 
+// getUserByAPIKey will fetch the user with the provided API Key from the request header
+func (api *APIConfig) getUserByAPIKey(w http.ResponseWriter, r *http.Request) {
+	apiKey, err := fetchAPIToken(r)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, fmt.Sprintf("getUserByAPIKey: %s", err))
+		return
+	}
+
+	user, err := api.DB.GetUserByApiKey(r.Context(), apiKey)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, fmt.Sprintf("getUserByApiKey fetch: %s", err))
+		return
+	}
+
+	respondWithJSON(w, http.StatusOK, user)
+}
+
 func mainPage(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	if _, err := w.Write([]byte("we're A-OK!")); err != nil {
 		respondWithError(w, http.StatusInternalServerError, fmt.Sprintf("failed to write: %s", err))
 	}
-}
-
-// respondWithError will write out an error message to the console
-func respondWithError(w http.ResponseWriter, code int, msg string) {
-	respondWithJSON(w, code, struct {
-		Error string `json:"error"`
-	}{
-		Error: msg,
-	})
-}
-
-// respondWithJSON is a helper function that reuses a JSON-posting for success messages
-func respondWithJSON(w http.ResponseWriter, status int, payload interface{}) {
-	dat, datErr := json.Marshal(payload)
-	if datErr != nil {
-		log.Printf("Error marshaling JSON response: %s", datErr)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	if _, wErr := w.Write(dat); wErr != nil {
-		log.Printf("Error writing JSON to page: %s", wErr)
-		return
-	}
-}
-
-// readinessEndpoint will render a verbal status based on the health + readiness of the webapp
-func readinessEndpoint(w http.ResponseWriter, r *http.Request) {
-	respondWithJSON(w, http.StatusOK, struct {
-		Status string `json:"status"`
-	}{
-		Status: "ok",
-	})
-}
-
-func errorTester(w http.ResponseWriter, r *http.Request) {
-	respondWithError(w, http.StatusInternalServerError, "Internal Server Error")
 }
