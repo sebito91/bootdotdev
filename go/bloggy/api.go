@@ -48,6 +48,7 @@ func GetAPI() (*APIConfig, error) {
 		r.Get("/users", api.middlewareAuth(api.getUserByAPIKey))
 		r.Post("/users", api.createUser)
 
+		r.Get("/feeds", api.getFeeds)
 		r.Post("/feeds", api.middlewareAuth(api.createFeed))
 	})
 
@@ -157,4 +158,15 @@ func (api *APIConfig) createFeed(w http.ResponseWriter, r *http.Request, user da
 	}
 
 	respondWithJSON(w, http.StatusCreated, feed)
+}
+
+// getFeeds will fetch all feeds from the 'feeds' table in the database
+func (api *APIConfig) getFeeds(w http.ResponseWriter, r *http.Request) {
+	feeds, err := api.DB.GetFeeds(r.Context())
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, fmt.Sprintf("getFeeds: %s", err))
+		return
+	}
+
+	respondWithJSON(w, http.StatusCreated, feeds)
 }
