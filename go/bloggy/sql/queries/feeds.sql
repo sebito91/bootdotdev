@@ -5,3 +5,6 @@ RETURNING *;
 
 -- name: GetFeeds :many
 select * from feeds;
+
+-- name: GetFeedByID :one
+select * from feeds where id = $1;
