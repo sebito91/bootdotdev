@@ -45,7 +45,7 @@ func GetAPI() (*APIConfig, error) {
 		r.Get("/readiness", readinessEndpoint)
 		r.Get("/err", errorTester)
 
-		r.Get("/users", api.getUserByAPIKey)
+		r.Get("/users", api.middlewareAuth(api.getUserByAPIKey))
 		r.Post("/users", api.createUser)
 	})
 
@@ -96,19 +96,7 @@ func (api *APIConfig) createUser(w http.ResponseWriter, r *http.Request) {
 }
 
 // getUserByAPIKey will fetch the user with the provided API Key from the request header
-func (api *APIConfig) getUserByAPIKey(w http.ResponseWriter, r *http.Request) {
-	apiKey, err := fetchAPIToken(r)
-	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, fmt.Sprintf("getUserByAPIKey: %s", err))
-		return
-	}
-
-	user, err := api.DB.GetUserByApiKey(r.Context(), apiKey)
-	if err != nil {
-		respondWithError(w, http.StatusBadRequest, fmt.Sprintf("getUserByApiKey fetch: %s", err))
-		return
-	}
-
+func (api *APIConfig) getUserByAPIKey(w http.ResponseWriter, r *http.Request, user database.User) {
 	respondWithJSON(w, http.StatusOK, user)
 }
 
