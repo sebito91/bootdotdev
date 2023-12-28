@@ -41,6 +41,12 @@ func (api *APIConfig) createFeed(w http.ResponseWriter, r *http.Request, user da
 		return
 	}
 
+	newFeedFollowUUID, err := uuid.NewRandom()
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, fmt.Sprintf("createFeed: %s", err))
+		return
+	}
+
 	newTime := time.Now()
 	newFeed := database.CreateFeedParams{
 		ID:        newUUID,
@@ -51,13 +57,33 @@ func (api *APIConfig) createFeed(w http.ResponseWriter, r *http.Request, user da
 		UserID:    user.ID,
 	}
 
+	newFeedFollow := database.CreateFeedFollowParams{
+		ID:        newFeedFollowUUID,
+		CreatedAt: newTime,
+		UpdatedAt: newTime,
+		FeedID:    newUUID,
+		UserID:    user.ID,
+	}
+
 	feed, err := api.DB.CreateFeed(r.Context(), newFeed)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, fmt.Sprintf("createFeed: %s", err))
 		return
 	}
 
-	respondWithJSON(w, http.StatusCreated, feed)
+	feedFollow, err := api.DB.CreateFeedFollow(r.Context(), newFeedFollow)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, fmt.Sprintf("createFeed: createFeedFollow: %s", err))
+		return
+	}
+
+	respondWithJSON(w, http.StatusCreated, struct {
+		Feed       database.Feed       `json:"feed"`
+		FeedFollow database.FeedFollow `json:"feed_follow"`
+	}{
+		Feed:       feed,
+		FeedFollow: feedFollow,
+	})
 }
 
 // getFeeds will fetch all feeds from the 'feeds' table in the database
