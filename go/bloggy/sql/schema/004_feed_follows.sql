@@ -5,6 +5,7 @@ CREATE TABLE feed_follows (
     user_id uuid not null references users(id) on delete cascade, 
     created_at timestamp not null,
     updated_at timestamp not null,
+    unique (feed_id, user_id),
     PRIMARY KEY (id)
 
 );
