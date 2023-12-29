@@ -1,4 +1,4 @@
-package main
+package api
 
 import (
 	"encoding/json"
@@ -11,7 +11,7 @@ import (
 )
 
 // createFeedFollow will add an entry to the 'feed_follows' table for the requesting user and the provided feed_id
-func (api *APIConfig) createFeedFollow(w http.ResponseWriter, r *http.Request, user database.User) {
+func (ac *apiConfig) createFeedFollow(w http.ResponseWriter, r *http.Request, user database.User) {
 	type newFeedFollowCheck struct {
 		FeedID string `json:"feed_id"`
 	}
@@ -50,7 +50,7 @@ func (api *APIConfig) createFeedFollow(w http.ResponseWriter, r *http.Request, u
 		UserID:    user.ID,
 	}
 
-	feedFollow, err := api.DB.CreateFeedFollow(r.Context(), newFeedFollow)
+	feedFollow, err := ac.DB.CreateFeedFollow(r.Context(), newFeedFollow)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, fmt.Sprintf("createFeedFollow: %s", err))
 		return
@@ -60,8 +60,8 @@ func (api *APIConfig) createFeedFollow(w http.ResponseWriter, r *http.Request, u
 }
 
 // getFeedFollows will fetch all feeds that the requesting user follows
-func (api *APIConfig) getFeedFollows(w http.ResponseWriter, r *http.Request, user database.User) {
-	feedFollows, err := api.DB.GetFeedFollowsByUser(r.Context(), user.ID)
+func (ac *apiConfig) getFeedFollows(w http.ResponseWriter, r *http.Request, user database.User) {
+	feedFollows, err := ac.DB.GetFeedFollowsByUser(r.Context(), user.ID)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, fmt.Sprintf("getFeedFollows: %s", err))
 		return
@@ -71,5 +71,5 @@ func (api *APIConfig) getFeedFollows(w http.ResponseWriter, r *http.Request, use
 }
 
 // deleteFeedFollow will remove the follow for a given feed_id that the requesting user follows
-func (api *APIConfig) deleteFeedFollow(w http.ResponseWriter, r *http.Request, user database.User) {
+func (ac *apiConfig) deleteFeedFollow(w http.ResponseWriter, r *http.Request, user database.User) {
 }

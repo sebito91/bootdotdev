@@ -1,4 +1,4 @@
-package main
+package api
 
 import (
 	"encoding/json"
@@ -11,7 +11,7 @@ import (
 )
 
 // createUser will generate a new user in the database with all of the corresponding fields
-func (api *APIConfig) createUser(w http.ResponseWriter, r *http.Request) {
+func (ac *apiConfig) createUser(w http.ResponseWriter, r *http.Request) {
 	type newUserCheck struct {
 		Name string `json:"name"`
 	}
@@ -43,7 +43,7 @@ func (api *APIConfig) createUser(w http.ResponseWriter, r *http.Request) {
 		Name:      newUserChk.Name,
 	}
 
-	user, err := api.DB.CreateUser(r.Context(), newUser)
+	user, err := ac.DB.CreateUser(r.Context(), newUser)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, fmt.Sprintf("createUser: %s", err))
 		return
@@ -53,6 +53,6 @@ func (api *APIConfig) createUser(w http.ResponseWriter, r *http.Request) {
 }
 
 // getUserByAPIKey will fetch the user with the provided API Key from the request header
-func (api *APIConfig) getUserByAPIKey(w http.ResponseWriter, r *http.Request, user database.User) {
+func (ac *apiConfig) getUserByAPIKey(w http.ResponseWriter, r *http.Request, user database.User) {
 	respondWithJSON(w, http.StatusOK, user)
 }

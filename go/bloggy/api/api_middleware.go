@@ -1,4 +1,4 @@
-package main
+package api
 
 import (
 	"fmt"
@@ -14,7 +14,7 @@ type authedHandler func(http.ResponseWriter, *http.Request, database.User)
 // middlewareAuth defines an http.HandlerFunc that processes the incoming HTTP request
 // for a valid user Authorization header providing an ApiKey. If found and acceptable
 // the func is successfully returned and the next part of the request is performed.
-func (api *APIConfig) middlewareAuth(handler authedHandler) http.HandlerFunc {
+func (ac *apiConfig) middlewareAuth(handler authedHandler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		apiKey, err := fetchAPIToken(r)
 		if err != nil {
@@ -22,7 +22,7 @@ func (api *APIConfig) middlewareAuth(handler authedHandler) http.HandlerFunc {
 			return
 		}
 
-		user, err := api.DB.GetUserByApiKey(r.Context(), apiKey)
+		user, err := ac.DB.GetUserByApiKey(r.Context(), apiKey)
 		if err != nil {
 			respondWithError(w, http.StatusBadRequest, fmt.Sprintf("middlewareAuth user fetch: %s", err))
 			return

@@ -1,4 +1,4 @@
-package main
+package api
 
 import (
 	"encoding/json"
@@ -11,7 +11,7 @@ import (
 )
 
 // createFeed will generate a new entry in the feeds table using the providing information
-func (api *APIConfig) createFeed(w http.ResponseWriter, r *http.Request, user database.User) {
+func (ac *apiConfig) createFeed(w http.ResponseWriter, r *http.Request, user database.User) {
 	type newFeedCheck struct {
 		Name string `json:"name"`
 		URL  string `json:"url"`
@@ -65,13 +65,13 @@ func (api *APIConfig) createFeed(w http.ResponseWriter, r *http.Request, user da
 		UserID:    user.ID,
 	}
 
-	feed, err := api.DB.CreateFeed(r.Context(), newFeed)
+	feed, err := ac.DB.CreateFeed(r.Context(), newFeed)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, fmt.Sprintf("createFeed: %s", err))
 		return
 	}
 
-	feedFollow, err := api.DB.CreateFeedFollow(r.Context(), newFeedFollow)
+	feedFollow, err := ac.DB.CreateFeedFollow(r.Context(), newFeedFollow)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, fmt.Sprintf("createFeed: createFeedFollow: %s", err))
 		return
@@ -87,8 +87,8 @@ func (api *APIConfig) createFeed(w http.ResponseWriter, r *http.Request, user da
 }
 
 // getFeeds will fetch all feeds from the 'feeds' table in the database
-func (api *APIConfig) getFeeds(w http.ResponseWriter, r *http.Request) {
-	feeds, err := api.DB.GetFeeds(r.Context())
+func (ac *apiConfig) getFeeds(w http.ResponseWriter, r *http.Request) {
+	feeds, err := ac.DB.GetFeeds(r.Context())
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, fmt.Sprintf("getFeeds: %s", err))
 		return

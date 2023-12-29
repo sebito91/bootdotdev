@@ -1,9 +1,9 @@
-package main
+package api
 
 import "net/http"
 
-// middlewareCors enables the cross-origin features required to run via boot.dev test servers
-func middlewareCors(next http.Handler) http.Handler {
+// MiddlewareCors enables the cross-origin features required to run via boot.dev test servers
+func MiddlewareCors(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS, PUT, DELETE")

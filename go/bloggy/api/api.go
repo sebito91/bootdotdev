@@ -1,4 +1,4 @@
-package main
+package api
 
 import (
 	"database/sql"
@@ -11,28 +11,28 @@ import (
 	"github.com/sebito91/bootdotdev/go/bloggy/internal/database"
 )
 
-// APIConfig is a struct to hold references to our database, router, and other components
-type APIConfig struct {
+// apiConfig is a struct to hold references to our database, router, and other components
+type apiConfig struct {
 	DB     *database.Queries
 	Router chi.Router
 }
 
 // GetAPI generates the new route for the aggregator and returns a handle to the router
-func GetAPI() (*APIConfig, error) {
-	api := &APIConfig{}
+func GetAPI() (*apiConfig, error) {
+	apiCfg := &apiConfig{}
 
 	err := godotenv.Load()
 	if err != nil {
-		return api, err
+		return apiCfg, err
 	}
 
 	dbURL := os.Getenv("CONN")
 	db, err := sql.Open("postgres", dbURL)
 	if err != nil {
-		return api, err
+		return apiCfg, err
 	}
 
-	api.DB = database.New(db)
+	apiCfg.DB = database.New(db)
 
 	r := chi.NewRouter()
 
@@ -42,24 +42,24 @@ func GetAPI() (*APIConfig, error) {
 		r.Get("/readiness", readinessEndpoint)
 		r.Get("/err", errorTester)
 
-		r.Get("/users", api.middlewareAuth(api.getUserByAPIKey))
-		r.Post("/users", api.createUser)
+		r.Get("/users", apiCfg.middlewareAuth(apiCfg.getUserByAPIKey))
+		r.Post("/users", apiCfg.createUser)
 
-		r.Get("/feeds", api.getFeeds)
-		r.Post("/feeds", api.middlewareAuth(api.createFeed))
+		r.Get("/feeds", apiCfg.getFeeds)
+		r.Post("/feeds", apiCfg.middlewareAuth(apiCfg.createFeed))
 
 		r.Route("/feed_follows", func(r chi.Router) {
-			r.Get("/", api.middlewareAuth(api.getFeedFollows))
-			r.Post("/", api.middlewareAuth(api.createFeedFollow))
+			r.Get("/", apiCfg.middlewareAuth(apiCfg.getFeedFollows))
+			r.Post("/", apiCfg.middlewareAuth(apiCfg.createFeedFollow))
 
 			r.Route("/{feedFollowID}", func(r chi.Router) {
-				r.Delete("/", api.middlewareAuth(api.deleteFeedFollow))
+				r.Delete("/", apiCfg.middlewareAuth(apiCfg.deleteFeedFollow))
 			})
 		})
 	})
 
-	api.Router = r
-	return api, nil
+	apiCfg.Router = r
+	return apiCfg, nil
 }
 
 func mainPage(w http.ResponseWriter, r *http.Request) {
