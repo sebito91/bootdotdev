@@ -8,3 +8,6 @@ select * from feeds;
 
 -- name: GetFeedByID :one
 select * from feeds where id = $1;
+
+-- name: GetNextFeedsToFetch :many
+select * from feeds where last_fetched_at > $1 order by (last_fetched_at, id) limit $2;
