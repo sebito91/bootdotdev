@@ -10,6 +10,16 @@ import (
 	"github.com/sebito91/bootdotdev/go/bloggy/internal/database"
 )
 
+// Feed is an API-version of the struct the comes from the database. This helps to delineate HTTP from DB API
+type Feed struct {
+	ID        uuid.UUID `json:"id"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+	Name      string    `json:"name"`
+	URL       string    `json:"url"`
+	UserID    uuid.UUID `json:"user_id"`
+}
+
 // createFeed will generate a new entry in the feeds table using the providing information
 func (ac *apiConfig) createFeed(w http.ResponseWriter, r *http.Request, user database.User) {
 	type newFeedCheck struct {
@@ -65,21 +75,38 @@ func (ac *apiConfig) createFeed(w http.ResponseWriter, r *http.Request, user dat
 		UserID:    user.ID,
 	}
 
-	feed, err := ac.DB.CreateFeed(r.Context(), newFeed)
+	dbFeed, err := ac.DB.CreateFeed(r.Context(), newFeed)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, fmt.Sprintf("createFeed: %s", err))
 		return
 	}
 
-	feedFollow, err := ac.DB.CreateFeedFollow(r.Context(), newFeedFollow)
+	dbFeedFollow, err := ac.DB.CreateFeedFollow(r.Context(), newFeedFollow)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, fmt.Sprintf("createFeed: createFeedFollow: %s", err))
 		return
 	}
 
+	feed := Feed{
+		ID:        dbFeed.ID,
+		Name:      dbFeed.Name,
+		URL:       dbFeed.Url,
+		UserID:    dbFeed.UserID,
+		CreatedAt: dbFeed.CreatedAt,
+		UpdatedAt: dbFeed.UpdatedAt,
+	}
+
+	feedFollow := FeedFollow{
+		ID:        dbFeedFollow.ID,
+		CreatedAt: dbFeedFollow.CreatedAt,
+		UpdatedAt: dbFeedFollow.UpdatedAt,
+		FeedID:    dbFeedFollow.FeedID,
+		UserID:    dbFeedFollow.UserID,
+	}
+
 	respondWithJSON(w, http.StatusCreated, struct {
-		Feed       database.Feed       `json:"feed"`
-		FeedFollow database.FeedFollow `json:"feed_follow"`
+		Feed       Feed       `json:"feed"`
+		FeedFollow FeedFollow `json:"feed_follow"`
 	}{
 		Feed:       feed,
 		FeedFollow: feedFollow,
@@ -88,10 +115,22 @@ func (ac *apiConfig) createFeed(w http.ResponseWriter, r *http.Request, user dat
 
 // getFeeds will fetch all feeds from the 'feeds' table in the database
 func (ac *apiConfig) getFeeds(w http.ResponseWriter, r *http.Request) {
-	feeds, err := ac.DB.GetFeeds(r.Context())
+	dbFeeds, err := ac.DB.GetFeeds(r.Context())
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, fmt.Sprintf("getFeeds: %s", err))
 		return
+	}
+
+	feeds := make([]Feed, len(dbFeeds))
+	for idx, dbFeed := range dbFeeds {
+		feeds[idx] = Feed{
+			ID:        dbFeed.ID,
+			Name:      dbFeed.Name,
+			URL:       dbFeed.Url,
+			UserID:    dbFeed.UserID,
+			CreatedAt: dbFeed.CreatedAt,
+			UpdatedAt: dbFeed.UpdatedAt,
+		}
 	}
 
 	respondWithJSON(w, http.StatusCreated, feeds)

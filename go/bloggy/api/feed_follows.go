@@ -10,6 +10,15 @@ import (
 	"github.com/sebito91/bootdotdev/go/bloggy/internal/database"
 )
 
+// FeedFollow is an API-version of the struct the comes from the database. This helps to delineate HTTP from DB API
+type FeedFollow struct {
+	ID        uuid.UUID `json:"id"`
+	FeedID    uuid.UUID `json:"feed_id"`
+	UserID    uuid.UUID `json:"user_id"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
 // createFeedFollow will add an entry to the 'feed_follows' table for the requesting user and the provided feed_id
 func (ac *apiConfig) createFeedFollow(w http.ResponseWriter, r *http.Request, user database.User) {
 	type newFeedFollowCheck struct {
@@ -50,10 +59,18 @@ func (ac *apiConfig) createFeedFollow(w http.ResponseWriter, r *http.Request, us
 		UserID:    user.ID,
 	}
 
-	feedFollow, err := ac.DB.CreateFeedFollow(r.Context(), newFeedFollow)
+	dbFeedFollow, err := ac.DB.CreateFeedFollow(r.Context(), newFeedFollow)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, fmt.Sprintf("createFeedFollow: %s", err))
 		return
+	}
+
+	feedFollow := FeedFollow{
+		ID:        dbFeedFollow.ID,
+		CreatedAt: dbFeedFollow.CreatedAt,
+		UpdatedAt: dbFeedFollow.UpdatedAt,
+		FeedID:    dbFeedFollow.FeedID,
+		UserID:    dbFeedFollow.UserID,
 	}
 
 	respondWithJSON(w, http.StatusCreated, feedFollow)
@@ -61,10 +78,21 @@ func (ac *apiConfig) createFeedFollow(w http.ResponseWriter, r *http.Request, us
 
 // getFeedFollows will fetch all feeds that the requesting user follows
 func (ac *apiConfig) getFeedFollows(w http.ResponseWriter, r *http.Request, user database.User) {
-	feedFollows, err := ac.DB.GetFeedFollowsByUser(r.Context(), user.ID)
+	dbFeedFollows, err := ac.DB.GetFeedFollowsByUser(r.Context(), user.ID)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, fmt.Sprintf("getFeedFollows: %s", err))
 		return
+	}
+
+	feedFollows := make([]FeedFollow, len(dbFeedFollows))
+	for idx, dbFeedFollow := range dbFeedFollows {
+		feedFollows[idx] = FeedFollow{
+			ID:        dbFeedFollow.ID,
+			CreatedAt: dbFeedFollow.CreatedAt,
+			UpdatedAt: dbFeedFollow.UpdatedAt,
+			FeedID:    dbFeedFollow.FeedID,
+			UserID:    dbFeedFollow.UserID,
+		}
 	}
 
 	respondWithJSON(w, http.StatusCreated, feedFollows)
