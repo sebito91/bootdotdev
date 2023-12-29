@@ -9,6 +9,8 @@ import (
 
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
+
+	"github.com/sebito91/bootdotdev/go/bloggy/api"
 )
 
 func main() {
@@ -27,12 +29,12 @@ func main() {
 
 	fmt.Printf("we're using port: %d\n", port)
 
-	api, err := GetAPI()
+	apiCfg, err := api.GetAPI()
 	if err != nil {
 		panic(err)
 	}
 
-	corsMux := middlewareCors(api.Router)
+	corsMux := api.MiddlewareCors(apiCfg.Router)
 
 	// create the server struct
 	server := &http.Server{
