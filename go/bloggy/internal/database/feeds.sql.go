@@ -105,7 +105,7 @@ func (q *Queries) GetFeeds(ctx context.Context) ([]Feed, error) {
 
 const getNextFeedsToFetch = `-- name: GetNextFeedsToFetch :many
 SELECT id, created_at, updated_at, name, url, user_id, last_fetched_at FROM feeds
-WHERE last_fetched_at > $1
+WHERE last_fetched_at < $1
 ORDER BY (last_fetched_at, id)
 LIMIT $2
 `

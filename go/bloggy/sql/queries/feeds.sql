@@ -11,7 +11,7 @@ SELECT * FROM feeds WHERE id = $1;
 
 -- name: GetNextFeedsToFetch :many
 SELECT * FROM feeds
-WHERE last_fetched_at > $1
+WHERE last_fetched_at < $1
 ORDER BY (last_fetched_at, id)
 LIMIT $2;
 

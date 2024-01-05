@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"strconv"
@@ -14,7 +15,7 @@ import (
 )
 
 func main() {
-	fmt.Println("Welcome to Bloggy!")
+	log.Println("Welcome to Bloggy!")
 
 	err := godotenv.Load()
 	if err != nil {
@@ -26,8 +27,6 @@ func main() {
 	if err != nil {
 		panic(fmt.Errorf("could not find value for PORT in env file, please check: %s", err))
 	}
-
-	fmt.Printf("we're using port: %d\n", port)
 
 	apiCfg, err := api.GetAPI()
 	if err != nil {
@@ -43,7 +42,16 @@ func main() {
 		ReadHeaderTimeout: time.Second,
 	}
 
+	// TODO: move these to flags
+	var concurrency = 10
+	var sleepInterval = time.Minute
+	go apiCfg.StartScraping(concurrency, sleepInterval)
+
+	log.Printf("starting bloggy listener on %s...\n", server.Addr)
+
 	if err := server.ListenAndServe(); err != nil {
 		panic(err)
 	}
+
+	log.Printf("closing bloggy")
 }
