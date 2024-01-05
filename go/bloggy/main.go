@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"net/http"
@@ -28,7 +29,10 @@ func main() {
 		panic(fmt.Errorf("could not find value for PORT in env file, please check: %s", err))
 	}
 
-	apiCfg, err := api.GetAPI()
+	concurrency := flag.Int("concurrency", 10, "number of concurrent feeds to consume")
+	sleepInterval := flag.Duration("sleepInterval", time.Minute, "how to to sleep between polls for feeds")
+
+	apiCfg, err := api.GetAPI(*concurrency, *sleepInterval)
 	if err != nil {
 		panic(err)
 	}
@@ -42,10 +46,7 @@ func main() {
 		ReadHeaderTimeout: time.Second,
 	}
 
-	// TODO: move these to flags
-	var concurrency = 10
-	var sleepInterval = time.Minute
-	go apiCfg.StartScraping(concurrency, sleepInterval)
+	go apiCfg.StartScraping()
 
 	log.Printf("starting bloggy listener on %s...\n", server.Addr)
 

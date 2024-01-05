@@ -15,17 +15,17 @@ import (
 // StartScraping is a goroutine that handles the article scraping from various sources
 // within the 'feeds' database table. This function will itself kick off up to `concurrency`
 // goroutines to fetch deduplicated sources from their locations.
-func (ac *apiConfig) StartScraping(concurrency int, sleepInterval time.Duration) {
-	log.Printf("starting to scrape records using %d goroutines set to poll every %s\n", concurrency, sleepInterval)
-	ticker := time.NewTicker(sleepInterval)
+func (ac *apiConfig) StartScraping() {
+	log.Printf("starting to scrape records using %d goroutines set to poll every %s\n", ac.concurrency, ac.sleepInterval)
+	ticker := time.NewTicker(ac.sleepInterval)
 
 	feedsArgs := database.GetNextFeedsToFetchParams{
-		Limit: int32(concurrency),
+		Limit: int32(ac.concurrency),
 	}
 
 	// kick off the ticker to start our collection
 	for ; ; <-ticker.C {
-		feedsArgs.LastFetchedAt = time.Now().Add(-sleepInterval)
+		feedsArgs.LastFetchedAt = time.Now().Add(-ac.sleepInterval)
 		feeds, err := ac.DB.GetNextFeedsToFetch(context.Background(), feedsArgs)
 		if err != nil {
 			log.Printf("could not fetch feeds: %s\n", err)

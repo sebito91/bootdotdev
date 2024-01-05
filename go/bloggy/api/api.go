@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/joho/godotenv"
@@ -13,13 +14,18 @@ import (
 
 // apiConfig is a struct to hold references to our database, router, and other components
 type apiConfig struct {
-	DB     *database.Queries
-	Router chi.Router
+	DB            *database.Queries
+	Router        chi.Router
+	concurrency   int
+	sleepInterval time.Duration
 }
 
 // GetAPI generates the new route for the aggregator and returns a handle to the router
-func GetAPI() (*apiConfig, error) {
-	apiCfg := &apiConfig{}
+func GetAPI(concurrency int, sleepInterval time.Duration) (*apiConfig, error) {
+	apiCfg := &apiConfig{
+		concurrency:   concurrency,
+		sleepInterval: sleepInterval,
+	}
 
 	err := godotenv.Load()
 	if err != nil {
