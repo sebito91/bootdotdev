@@ -32,6 +32,8 @@ func main() {
 	concurrency := flag.Int("concurrency", 10, "number of concurrent feeds to consume")
 	sleepInterval := flag.Duration("sleepInterval", time.Minute, "how to to sleep between polls for feeds")
 
+	flag.Parse()
+
 	apiCfg, err := api.GetAPI(*concurrency, *sleepInterval)
 	if err != nil {
 		panic(err)
