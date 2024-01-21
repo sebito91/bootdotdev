@@ -15,5 +15,11 @@ spec:
         app: synergychat-api
     spec:
       containers:
-        - image: lanecwagner/synergychat-api:lates
+        - image: lanecwagner/synergychat-api:latest
           name: synergychat-api
+          env:
+            - name: API_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: synergychat-api-configmap
+                  key: API_PORT
