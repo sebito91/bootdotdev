@@ -18,5 +18,5 @@ spec:
         - image: lanecwagner/synergychat-crawler:latest
           name: synergychat-crawler
           envFrom:
-            - configMapKeyRef:
+            - configMapRef:
                 name: synergychat-crawler-configmap
